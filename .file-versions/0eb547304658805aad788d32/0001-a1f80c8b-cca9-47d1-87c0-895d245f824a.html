@@ -1,0 +1,3207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Vegetable Contractor — Management App</title>
+  <meta name="description" content="Mobile-phone-only management app for a single vegetable contractor — purchasing, tender allocation, inventory, receivables, payables, P&L." />
+  <style>
+    /* ========== Glassmorphism Design System Tokens (copied verbatim from tokens.css) ========== */
+    :root {
+      --bg: #eef6ff;
+      --surface: rgba(255, 255, 255, 0.74);
+      --surface-warm: rgba(238, 246, 255, 0.72);
+      --fg: #102033;
+      --fg-2: #34465f;
+      --muted: #60708a;
+      --meta: #4f8cff;
+      --border: rgba(255, 255, 255, 0.64);
+      --border-soft: rgba(255, 255, 255, 0.38);
+      --accent: #4f8cff;
+      --accent-on: #ffffff;
+      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --accent-active: color-mix(in oklab, var(--accent), black 14%);
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --font-display: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+      --font-body: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+      --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+      --text-xs: 12px;
+      --text-sm: 14px;
+      --text-base: 16px;
+      --text-lg: 18px;
+      --text-xl: 24px;
+      --text-2xl: 36px;
+      --text-3xl: 54px;
+      --text-4xl: 76px;
+      --leading-body: 1.55;
+      --leading-tight: 1.04;
+      --tracking-display: -0.025em;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --section-y-desktop: 104px;
+      --section-y-tablet: 72px;
+      --section-y-phone: 52px;
+      --radius-sm: 16px;
+      --radius-md: 24px;
+      --radius-lg: 36px;
+      --radius-pill: 9999px;
+      --elev-ring: 0 0 0 1px var(--border);
+      --elev-raised: 0 24px 80px rgba(79, 140, 255, 0.18);
+      --focus-ring: 0 0 0 4px rgba(79, 140, 255, 0.28);
+      --motion-fast: 180ms;
+      --motion-base: 280ms;
+      --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+      --container-max: 1180px;
+      --container-gutter-desktop: 36px;
+      --container-gutter-tablet: 24px;
+      --container-gutter-phone: 16px;
+    }
+
+    /* ========== Reset & Base ========== */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-body);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    li {
+      margin: 0;
+      padding: 0;
+    }
+    h1,
+    h2,
+    h3 {
+      font-family: var(--font-display);
+      line-height: var(--leading-tight);
+      letter-spacing: var(--tracking-display);
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    /* ========== App Shell ========== */
+    #app {
+      min-height: 100vh;
+      position: relative;
+    }
+    .screen {
+      display: none;
+      min-height: 100vh;
+      padding-bottom: 96px;
+    }
+    .screen.active {
+      display: block;
+    }
+
+    /* ========== G1 Bottom Navigation ========== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: var(--surface);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -12px 32px rgba(16, 32, 51, 0.06);
+      display: flex;
+      z-index: 100;
+      padding: 0 env(safe-area-inset-left) 0 env(safe-area-inset-right);
+    }
+    .bottom-nav a {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-decoration: none;
+      transition: color var(--motion-fast) var(--ease-standard);
+    }
+    .bottom-nav a.active {
+      color: var(--accent);
+    }
+    .bottom-nav .icon {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+    .bottom-nav .label {
+      font-size: 11px;
+    }
+
+    /* ========== G2 Floating Cart Indicator ========== */
+    .cart-indicator {
+      position: fixed;
+      top: 72px;
+      left: var(--space-4);
+      right: var(--space-4);
+      z-index: 90;
+      display: none;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-5);
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--elev-raised);
+    }
+    .cart-indicator.show {
+      display: flex;
+    }
+    .cart-indicator .label {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--fg);
+    }
+    .cart-indicator .sub {
+      font-size: var(--text-xs);
+      color: var(--muted);
+    }
+    .cart-indicator .chip {
+      margin-left: auto;
+      font-size: var(--text-xs);
+      font-weight: 700;
+      padding: 2px 8px;
+      background: var(--accent);
+      color: var(--accent-on);
+      border-radius: var(--radius-pill);
+    }
+
+    /* Correction chip */
+    .correction-chip {
+      position: fixed;
+      top: 12px;
+      left: 0;
+      right: 0;
+      z-index: 95;
+      display: none;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2);
+      background: var(--warn);
+      color: #fff;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      border-radius: var(--radius-md);
+      box-shadow: var(--elev-raised);
+    }
+    .correction-chip.show {
+      display: flex;
+    }
+
+    /* ========== App Bar (U1) ========== */
+    .app-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: var(--surface);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-4);
+      z-index: 80;
+    }
+    .app-bar .title {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--fg);
+      font-family: var(--font-display);
+    }
+    .app-bar .back,
+    .app-bar .action {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg);
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+    .app-bar .action:active,
+    .app-bar .back:active {
+      background: rgba(79, 140, 255, 0.12);
+    }
+
+    /* ========== Section & Container ========== */
+    section {
+      padding-top: 72px;
+      padding-bottom: var(--space-8);
+    }
+    .container {
+      max-width: var(--container-max);
+      margin-inline: auto;
+      padding-inline: var(--container-gutter-phone);
+    }
+
+    /* Typography utilities */
+    .eyebrow {
+      color: var(--meta);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .lead {
+      max-width: 640px;
+      color: var(--fg-2);
+      font-size: var(--text-lg);
+    }
+    h1 {
+      font-size: var(--text-4xl);
+      font-weight: 760;
+      max-width: 820px;
+    }
+    h2 {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+    }
+    h3 {
+      font-size: var(--text-xl);
+      font-weight: 700;
+    }
+
+    /* ========== Buttons ========== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 var(--space-5);
+      border: 1px solid transparent;
+      border-radius: var(--radius-pill);
+      font: 700 var(--text-sm) / 1 var(--font-body);
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+    }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--fg);
+      border-color: var(--border);
+      box-shadow: var(--elev-ring);
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-sticky {
+      position: fixed;
+      bottom: 136px;
+      left: 0;
+      right: 0;
+      padding: var(--space-4);
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: var(--space-3);
+      justify-content: center;
+      z-index: 70;
+      padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    }
+
+    /* ========== Card ========== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      box-shadow: var(--elev-raised);
+    }
+
+    /* ========== Panel ========== */
+    .panel {
+      background: color-mix(in oklab, var(--surface), transparent 4%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--elev-raised);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-5);
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    /* ========== Field ========== */
+    .field {
+      display: grid;
+      gap: var(--space-2);
+      margin-block-start: var(--space-5);
+    }
+    label {
+      color: var(--fg-2);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 var(--space-4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-color: var(--accent);
+    }
+    .field-error {
+      color: var(--danger);
+      font-size: var(--text-xs);
+      font-weight: 600;
+    }
+
+    /* ========== Keypad (G3) ========== */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-3);
+      margin-top: var(--space-4);
+    }
+    .keypad key {
+      min-height: 64px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--fg);
+      font-size: var(--text-xl);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .keypad key:active {
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+    .keypad .key-zero {
+      grid-column: span 2;
+    }
+    .keypad .key-decimal {
+      color: var(--muted);
+    }
+    .keypad .key-back {
+      color: var(--danger);
+    }
+
+    /* ========== Badge / Status ========== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font: 700 var(--text-xs) / 1 var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 8px;
+      border-radius: var(--radius-pill);
+    }
+    .badge-green { background: color-mix(in oklab, var(--success), white 85%); color: #15803d; }
+    .badge-red { background: color-mix(in oklab, var(--danger), white 85%); color: #b91c1c; }
+    .badge-blue { background: color-mix(in oklab, var(--meta), white 85%); color: #1d4ed8; }
+    .badge-gray { background: color-mix(in oklab, var(--muted), white 85%); color: var(--fg-2); }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--meta);
+      font: 700 var(--text-xs) / 1 var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .status::before {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--radius-pill);
+      background: var(--success);
+      content: "";
+    }
+
+    /* ========== Metric ========== */
+    .metric {
+      padding: var(--space-5);
+      border-right: 1px solid var(--border-soft);
+    }
+    .metric:last-child {
+      border-right: 0;
+    }
+    .metric strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      line-height: var(--leading-tight);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    .metric.green strong { color: var(--success); }
+    .metric.red strong { color: var(--danger); }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+    @media (min-width: 640px) {
+      .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    /* ========== Progress Bar ========== */
+    .progress {
+      height: 8px;
+      background: color-mix(in oklab, var(--border), white 60%);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-top: var(--space-2);
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: var(--radius-pill);
+      transition: width var(--motion-base) var(--ease-standard);
+    }
+
+    /* ========== List Row ========== */
+    .list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4) 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .list-row:last-child {
+      border-bottom: 0;
+    }
+    .list-row .main {
+      flex: 1;
+    }
+    .list-row .sub {
+      color: var(--muted);
+      font-size: var(--text-sm);
+      display: block;
+    }
+    .list-row .value {
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    /* ========== Empty State ========== */
+    .empty-state {
+      text-align: center;
+      padding: var(--space-12) var(--space-4);
+    }
+    .empty-state .icon {
+      width: 64px;
+      height: 64px;
+      stroke: var(--muted);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      margin: 0 auto var(--space-5);
+      opacity: 0.5;
+    }
+    .empty-state h3 {
+      font-size: var(--text-xl);
+      color: var(--fg);
+      margin-bottom: var(--space-2);
+    }
+    .empty-state p {
+      color: var(--fg-2);
+      font-size: var(--text-base);
+      max-width: 320px;
+      margin: 0 auto var(--space-6);
+    }
+
+    /* ========== Toast (G4) ========== */
+    .toast-container {
+      position: fixed;
+      bottom: 200px;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 200;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .toast {
+      background: var(--fg);
+      color: #fff;
+      padding: var(--space-3) var(--space-5);
+      border-radius: var(--radius-pill);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+      box-shadow: var(--elev-raised);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+    .toast.warn { background: var(--warn); color: #fff; }
+
+    /* ========== Overlay / Modal ========== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 32, 51, 0.35);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--motion-fast) var(--ease-standard);
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal {
+      background: var(--surface);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 92vw;
+      max-width: 420px;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: scale(0.95);
+      transition: transform var(--motion-fast) var(--ease-standard);
+      box-shadow: var(--elev-raised);
+    }
+    .overlay.open .modal {
+      transform: scale(1);
+    }
+    .modal-head {
+      padding: var(--space-5);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      padding: var(--space-5);
+    }
+    .modal-foot {
+      padding: var(--space-5);
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      gap: var(--space-3);
+    }
+    .overlay-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: var(--text-lg);
+      cursor: pointer;
+      padding: var(--space-2);
+    }
+
+    /* ========== Bottom Sheet ========== */
+    .bottom-sheet {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 100vw;
+      max-height: 85vh;
+      background: var(--surface);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-top: 1px solid var(--border);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      box-shadow: 0 -24px 80px rgba(16, 32, 51, 0.18);
+      display: flex;
+      flex-direction: column;
+      z-index: 140;
+      transform: translateY(100%);
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
+    .bs-handle {
+      width: 32px;
+      height: 4px;
+      background: var(--border-soft);
+      border-radius: 2px;
+      margin: var(--space-3) auto;
+    }
+    .bs-head {
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bs-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-5);
+    }
+    .bs-foot {
+      padding: var(--space-5);
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    /* ========== Skeleton ========== */
+    .skeleton {
+      background: linear-gradient(90deg, color-mix(in oklab, var(--border), white 70%) 25%, color-mix(in oklab, var(--border), white 40%) 50%, color-mix(in oklab, var(--border), white 70%) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: var(--radius-sm);
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton.text { height: 16px; margin-bottom: var(--space-2); }
+    .skeleton.text.wide { width: 60%; }
+    .skeleton.avatar { width: 48px; height: 48px; border-radius: 50%; }
+
+    /* ========== Alerts / States ========== */
+    .alert {
+      padding: var(--space-4) var(--space-5);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      margin-block-start: var(--space-4);
+      background: var(--surface);
+    }
+    .alert.warn { border-color: var(--warn); background: color-mix(in oklab, var(--warn), white 90%); }
+    .alert.error { border-color: var(--danger); background: color-mix(in oklab, var(--danger), white 90%); }
+    .alert.info { border-color: var(--meta); background: color-mix(in oklab, var(--meta), white 90%); }
+
+    /* ========== Money formatting helpers ========== */
+    .money { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .profit { color: var(--success); }
+    .loss { color: var(--danger); }
+
+    /* ========== Utility ========== */
+    .row { display: flex; gap: var(--space-4); align-items: center; }
+    .row.between { justify-content: space-between; }
+    .col { display: flex; flex-direction: column; gap: var(--space-3); }
+    .center { text-align: center; }
+    .flex1 { flex: 1; }
+    .wrap { flex-wrap: wrap; }
+    .mt-4 { margin-top: var(--space-4); }
+    .mb-4 { margin-bottom: var(--space-4); }
+    .text-muted { color: var(--muted); }
+    .text-sm { font-size: var(--text-sm); }
+    .text-lg { font-size: var(--text-lg); }
+    .bold { font-weight: 700; }
+    .hidden { display: none !important; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- App Bar (U1) -->
+  <header class="app-bar" id="appBar">
+    <button class="back" id="btnBack" aria-label="Back">‹</button>
+    <div class="title" id="appTitle">Home</div>
+    <button class="action" id="btnMore" aria-label="More">•</button>
+  </header>
+
+  <!-- G1 Bottom Navigation -->
+  <nav class="bottom-nav" id="bottomNav">
+    <a href="#home" class="tab active" data-screen="home" aria-label="Home">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+      <span class="label">Home</span>
+    </a>
+    <a href="#veg" class="tab" data-screen="veg" aria-label="Vegetables">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+      <span class="label">Vegetables</span>
+    </a>
+    <a href="#cart" class="tab" data-screen="cart" aria-label="Cart">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></path></svg>
+      <span class="label">Cart</span>
+    </a>
+    <a href="#inventory" class="tab" data-screen="inventory" aria-label="Inventory">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 3H3m2 18H3m18-6h-2m-2-6h-2M7 11h10M7 11a2 2 0 100 4h10a2 2 0 100-4zM3 7V5a2 2 0 012-2h14a2 2 0 012 2v2"></path></svg>
+      <span class="label">Inventory</span>
+    </a>
+    <a href="#more" class="tab" data-screen="more" aria-label="More">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M19 4l-4 4-4-4M19 12l-4 4-4-4M19 20l-4 4-4-4"></path></svg>
+      <span class="label">More</span>
+    </a>
+  </nav>
+
+  <!-- G2 Floating Cart Indicator -->
+  <div class="cart-indicator" id="cartIndicator">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></svg>
+    <div class="info">
+      <div class="label" id="cartLabel">Cart</div>
+      <div class="sub" id="cartSub">· 0 Items · Investment ₹0</div>
+    </div>
+    <div class="chip" id="cartChip">0</div>
+  </div>
+
+  <!-- Correction chip -->
+  <div class="correction-chip" id="correctionChip">
+    <span id="correctionText">Correcting TRX 20-Oct (R2)</span>
+  </div>
+
+  <!-- Toast Container (G4) -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ==================== S01 SPLASH ==================== -->
+  <section class="screen" id="screen-splash">
+    <div class="container">
+      <div class="stack" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--accent); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
+          <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 32px; height: 32px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></path></svg>
+        </div>
+        <h1>Vegetable Contractor</h1>
+        <p class="lead text-muted mt-4">Your daily supply, tender, and profit manager.</p>
+        <div class="skeleton text wide" style="margin: var(--space-6) auto 0; max-width: 200px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== S02 WELCOME / INTRO ==================== -->
+  <section class="screen" id="screen-welcome">
+    <div class="container">
+      <div style="height: calc(100vh - 128px); display: flex; flex-direction: column; justify-content: space-between; padding-top: 72px;">
+        <div class="stack">
+          <div class="eyebrow">Slide 1 of 2</div>
+          <h2 style="max-width: 280px;">Know your price before you buy.</h2>
+          <p class="lead mt-4" style="max-width: 280px;">Every institution's fixed tender rate is known at allocation time, so margins are protected from the first bag.</p>
+        </div>
+        <div class="actions mt-8" style="display: flex; gap: var(--space-3);">
+          <button class="btn btn-secondary" id="btnWelcomeSkip">Skip</button>
+          <button class="btn btn-primary" id="btnWelcomeNext">Next</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== S04 BUSINESS PROFILE ==================== -->
+  <section class="screen" id="screen-profile">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">First-Time Setup · 1 of 4</p>
+          <h1>Business Profile</h1>
+          <p class="lead">Tell us about your business so we can set up your defaults.</p>
+        </div>
+
+        <form id="formProfile" novalidate>
+          <div class="field">
+            <label for="inpBizName">Business Name <span style="color: var(--danger)">*</span></label>
+            <input type="text" id="inpBizName" placeholder="e.g. Green Valley Supplies" required />
+          </div>
+          <div class="field">
+            <label for="inpCurrency">Currency</label>
+            <input type="text" id="inpCurrency" value="₹" readonly />
+            <span class="text-muted text-sm">₹ — Indian Rupee (default)</span>
+          </div>
+          <div class="field">
+            <label for="inpDefaultUnit">Default Unit</label>
+            <select id="inpDefaultUnit">
+              <option value="kg">kg</option>
+              <option value="litre">litre</option>
+              <option value="sack">sack</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="inpShelfLife">Default Shelf-Life Policy (days)</label>
+            <input type="number" id="inpShelfLife" value="7" min="0" />
+            <span class="text-muted text-sm">Default alert age for new items. Editable per item later.</span>
+          </div>
+        </form>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnProfileBack">Back</button>
+          <button class="btn btn-primary" id="btnProfileContinue">Continue</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S05 INITIAL ITEMS ==================== -->
+  <section class="screen" id="screen-initial-items">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">First-Time Setup · 2 of 4</p>
+          <h1>Initial Items</h1>
+          <p class="lead">Pre-seeded vegetables and groceries ship with your setup. Add custom items anytime.</p>
+        </div>
+
+        <div class="card mt-6">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-4);">
+            <h3 style="font-size: var(--text-lg);">Seed Catalog</h3>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="btnAddCustomItem">+ Add Custom</button>
+          </div>
+          <div id="seedItemList" class="stack">
+            <!-- Items injected by JS -->
+          </div>
+        </div>
+        <p class="text-muted text-sm mt-4">Anything beyond the seed catalog is a custom item — add it in Item Master later.</p>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInitialItemsBack">Back</button>
+          <button class="btn btn-primary" id="btnInitialItemsContinue">Continue</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S06 INITIAL INSTITUTIONS ==================== -->
+  <section class="screen" id="screen-initial-institutions">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">First-Time Setup · 3 of 4</p>
+          <h1>Initial Institutions</h1>
+          <p class="lead">Add the institutions you supply, their tender periods, and fixed tender prices.</p>
+        </div>
+
+        <div class="card mt-6">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-4);">
+            <h3 style="font-size: var(--text-lg);">Institutions</h3>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="btnAddInst">+ Add Institution</button>
+          </div>
+          <div id="instList" class="stack">
+            <!-- Institutions injected by JS -->
+          </div>
+        </div>
+        <p class="text-muted text-sm mt-4">Most institutions carry one tender, which then acts as the default everywhere.</p>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInitialInstBack">Back</button>
+          <button class="btn btn-primary" id="btnInitialInstContinue">Continue</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S07 SETUP COMPLETE ==================== -->
+  <section class="screen" id="screen-setup-complete">
+    <div class="container">
+      <div class="stack" style="height: calc(100vh - 128px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 72px;">
+        <div style="width: 80px; height: 80px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
+          <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 36px; height: 36px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <h2>Setup Complete ✓</h2>
+        <p class="lead mt-4 text-muted">Your business is ready. Start your first supply from Home.</p>
+        <div class="actions mt-8">
+          <button class="btn btn-primary" id="btnSetupToHome">Go to Home</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== S08 HOME DASHBOARD ==================== -->
+  <section class="screen" id="screen-home">
+    <div class="container">
+      <section>
+        <!-- TODAY cards -->
+        <div class="metric-grid" id="homeTodayCards">
+          <!-- injected -->
+        </div>
+
+        <!-- Pending split -->
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Pending Dues</p>
+              <h3>Pending ₹36,500</h3>
+            </div>
+            <span class="badge badge-blue">Split</span>
+          </div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Billed pending</div>
+                <div class="sub">A's Oct bill: 21,050 − 500 − 15,000 collected</div>
+              </div>
+              <div class="value" style="color:var(--fg-2)">₹5,550</div>
+            </div>
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Unbilled (accrued)</div>
+                <div class="sub">B ₹20,050 + C ₹10,900</div>
+              </div>
+              <div class="value" style="color:var(--fg-2)">₹30,950</div>
+            </div>
+          </div>
+          <p class="text-muted text-sm mt-3" style="font-size: var(--text-xs);">Profit ≠ cash received. Accrued = supplied but not yet billed.</p>
+        </div>
+
+        <!-- Today's Cart / Empty -->
+        <div id="homeCartCard" class="card mt-6 hidden">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Today's Cart</p>
+              <h3>Active Cart</h3>
+            </div>
+            <button class="btn btn-primary" style="padding: 4px 14px; font-size: var(--text-xs);" id="btnHomeOpenCart">Open Cart</button>
+          </div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row">
+              <div class="main">
+                <div class="value">3 Items · 1,200 kg</div>
+                <div class="sub">Investment ₹34,000 · Expected Revenue ₹43,500</div>
+              </div>
+              <div class="value profit">+₹9,500</div>
+            </div>
+            <p class="text-muted text-sm mt-3" style="font-size: var(--text-xs);">Expected profit before expenses.</p>
+          </div>
+        </div>
+        <div id="homeEmptyCart" class="card mt-6">
+          <div style="padding: var(--space-6) var(--space-5); text-align: center;">
+            <p class="eyebrow">Start Today's Supply</p>
+            <h3>Your cart is empty</h3>
+            <p class="text-muted text-sm mt-3">Select vegetables to begin today's purchase.</p>
+            <div class="actions mt-6" style="display: flex; gap: var(--space-3); justify-content: center;">
+              <button class="btn btn-primary" id="btnHomeBrowse">Browse Vegetables</button>
+              <button class="btn btn-secondary" id="btnHomeOpenCartEmpty">Open Cart</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory summary -->
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Inventory</p>
+              <h3>Stock on Hand</h3>
+            </div>
+            <button class="btn btn-secondary" style="padding: 4px 14px; font-size: var(--text-xs);" id="btnHomeViewInv">View Inventory</button>
+          </div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row">
+              <div class="main">
+                <div class="value">50 kg Available</div>
+                <div class="sub">Stock Value ₹1,500 · 1 Item</div>
+              </div>
+              <span class="badge badge-gray">1 item needs attention</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overall Performance -->
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Overall Performance</p>
+              <h3>Lifetime Totals</h3>
+            </div>
+            <button class="btn btn-secondary" style="padding: 4px 14px; font-size: var(--text-xs);" id="btnHomePL">View Profit/Loss</button>
+          </div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Total Investment</div>
+                <div class="sub">₹5,00,000</div>
+              </div>
+              <div class="value">Total Revenue</div>
+              <div class="sub">₹6,20,000</div>
+            </div>
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Total Expenses</div>
+                <div class="sub">₹40,000</div>
+              </div>
+              <div class="value profit">Overall Profit +₹80,000</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-6">
+          <p class="eyebrow">Quick Actions</p>
+          <div class="actions mt-4" style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+            <button class="btn btn-primary flex1" id="qaBrowse">Browse Vegetables</button>
+            <button class="btn btn-secondary flex1" id="qaCart">Open Cart</button>
+            <button class="btn btn-secondary flex1" id="qaInventory">Inventory</button>
+            <button class="btn btn-secondary flex1" id="qaInstitutions">Institutions</button>
+          </div>
+        </div>
+
+        <!-- Attention Center badge section -->
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Attention Center</p>
+              <h3>Alerts <span id="attnCount" class="badge badge-red" style="font-size: var(--text-xs); padding: 2px 6px; margin-left: 6px;">3</span></h3>
+            </div>
+            <button class="btn btn-secondary" style="padding: 4px 14px; font-size: var(--text-xs);" id="btnHomeAttn">View All</button>
+          </div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Old Stock Alert</div>
+                <div class="sub">Tomato lot is 3 days old — shelf-life is 3 days</div>
+              </div>
+              <span class="text-sm" style="color:var(--warn)">Act</span>
+            </div>
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Payment Due Alert</div>
+                <div class="sub">Institution A — Oct bill pending ₹5,550 (45 days)</div>
+              </div>
+              <span class="text-sm" style="color:var(--danger)">Due</span>
+            </div>
+            <div class="list-row">
+              <div class="main">
+                <div class="value">Backup Due</div>
+                <div class="sub">No backup in 7 days</div>
+              </div>
+              <span class="text-sm" style="color:var(--meta)">Reminder</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S09 ITEM LIST ==================== -->
+  <section class="screen" id="screen-veg">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Vegetables / Items</p>
+          <h1>All Items</h1>
+          <p class="lead">Select an item to add to today's cart.</p>
+        </div>
+
+        <div class="field mt-4">
+          <label>Search vegetables or items…</label>
+          <input type="text" id="inpItemSearch" placeholder="Tomato, Potato, Rice…" />
+        </div>
+
+        <div class="row wrap mt-4" style="gap: var(--space-2);">
+          <button class="btn btn-secondary" style="flex:none; padding: 4px 12px; font-size: var(--text-xs);" id="filtAll">All</button>
+          <button class="btn btn-secondary" style="flex:none; padding: 4px 12px; font-size: var(--text-xs);" id="filtVeg">Vegetables</button>
+          <button class="btn btn-secondary" style="flex:none; padding: 4px 12px; font-size: var(--text-xs);" id="filtGroc">Groceries</button>
+          <button class="btn btn-secondary" style="flex:none; padding: 4px 12px; font-size: var(--text-xs);" id="filtOther">Other Items</button>
+        </div>
+
+        <div id="itemGrid" class="mt-6">
+          <!-- injected -->
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S10 ITEM DETAIL ==================== -->
+  <section class="screen" id="screen-item-detail">
+    <div class="container">
+      <section>
+        <div id="itemDetailHero" style="height: 200px; border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-4); background: var(--surface-warm); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--text-lg);">
+          🍅 Hero Image
+        </div>
+
+        <h2 id="itemDetailName">Tomato</h2>
+        <p class="text-muted text-sm mt-2" id="itemDetailMeta">Vegetables · kg</p>
+
+        <div class="card mt-6">
+          <div class="field">
+            <label>Quantity</label>
+            <div class="row wrap" style="gap: var(--space-3); align-items: flex-end;">
+              <input type="text" id="inpQty" placeholder="0" maxlength="10" />
+              <span class="text-sm text-muted" id="qtyUnit">kg</span>
+              <button class="btn btn-secondary" id="btnPurchaseUnit" style="padding: 6px 14px; font-size: var(--text-xs);">Bags</button>
+            </div>
+            <span class="text-muted text-sm">Up to 2 decimal places (e.g. 0.5 kg)</span>
+          </div>
+
+          <div class="field mt-4">
+            <label>Today's Purchase Rate</label>
+            <div class="row wrap" style="gap: var(--space-3); align-items: flex-end;">
+              <input type="text" id="inpRate" placeholder="₹0" maxlength="10" />
+              <span class="text-sm text-muted" id="rateUnit">/kg</span>
+            </div>
+            <span class="text-muted text-sm" id="ratePrefill">Last: ₹28/kg · 19 Oct</span>
+          </div>
+
+          <div class="field mt-4">
+            <label>Purchase Cost (auto)</label>
+            <div class="row wrap" style="gap: var(--space-3); align-items: flex-end;">
+              <span class="value" id="lblPurchaseCost" style="font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums;">₹0</span>
+            </div>
+          </div>
+
+          <div class="field mt-4">
+            <label>Purchase Source (optional)</label>
+            <input type="text" id="inpSource" placeholder="Mandi / seller name" />
+          </div>
+
+          <div class="field mt-4">
+            <label>Quality / Grade Note (optional)</label>
+            <input type="text" id="inpQuality" placeholder="e.g. A-grade" />
+          </div>
+
+          <div class="field mt-4">
+            <label>Payment</label>
+            <div class="row wrap" style="gap: var(--space-3);">
+              <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;margin:0;">
+                <input type="radio" name="payFlag" value="paid-now" checked /> Paid now
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;margin:0;">
+                <input type="radio" name="payFlag" value="on-credit" /> On-credit
+              </label>
+            </div>
+            <div id="creditSeller" class="mt-3 hidden">
+              <input type="text" id="inpCreditSeller" placeholder="Seller name" />
+              <input type="text" id="inpDueDate" type="date" placeholder="Due date" />
+            </div>
+          </div>
+        </div>
+
+        <div id="inventoryCheck" class="card mt-6 hidden">
+          <div style="padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-soft);">
+            <p class="eyebrow">Inventory Available</p>
+            <strong>Existing Inventory Available: 50 kg</strong> (excludes open-cart reservations)
+          </div>
+          <div style="padding: var(--space-5); display: flex; gap: var(--space-3);">
+            <button class="btn btn-primary flex1" id="btnUseInventory">Use Inventory</button>
+            <button class="btn btn-secondary flex1" id="btnPurchaseNew">Purchase New</button>
+            <button class="btn btn-secondary flex1" id="btnUseBoth">Both</button>
+          </div>
+        </div>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnItemBack">Back</button>
+          <button class="btn btn-primary" id="btnAddToCart">Add to Cart</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S11 ADD/EDIT CUSTOM ITEM ==================== -->
+  <section class="screen" id="screen-add-item">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Item Master</p>
+          <h1>Add Custom Item</h1>
+          <p class="lead">One canonical image per item — bundled seed set or camera/gallery pick.</p>
+        </div>
+
+        <form id="formAddItem" novalidate>
+          <div class="field">
+            <label>Name <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="aiName" placeholder="e.g. Capsicum" required />
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <select id="aiCat"><option>Vegetables</option><option>Groceries</option><option>Other Items</option></select>
+          </div>
+          <div class="field">
+            <label>Unit</label>
+            <select id="aiUnit"><option>kg</option><option>litre</option><option>sack</option></select>
+          </div>
+          <div class="field">
+            <label>Purchase Unit (optional shortcut)</label>
+            <div class="row wrap" style="gap: var(--space-3);">
+              <select id="aiPU" style="flex:1;"><option>None</option><option>bag</option><option>sack</option><option>crate</option><option>box</option></select>
+              <input type="text" id="aiPUFactor" placeholder="= N base units" style="flex:1;" />
+            </div>
+            <span class="text-muted text-sm">e.g. 1 bag = 50 kg</span>
+          </div>
+          <div class="field">
+            <label>Shelf-Life Alert (days)</label>
+            <input type="number" id="aiShelf" value="7" min="0" />
+          </div>
+          <div class="field">
+            <label>Image</label>
+            <button class="btn btn-secondary" id="aiPickImage" style="padding: 6px 14px; font-size: var(--text-xs);">Choose Image</button>
+            <span class="text-muted text-sm mt-2 block">One canonical image · no in-app editing</span>
+          </div>
+          <div class="field">
+            <label>Active</label>
+            <div class="row wrap" style="gap: var(--space-3); align-items: center;">
+              <input type="checkbox" id="aiActive" checked /> <span>Item is active and orderable</span>
+            </div>
+          </div>
+        </form>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnAIBack">Back</button>
+          <button class="btn btn-primary" id="btnAISave">Save</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S12 DAILY CART ==================== -->
+  <section class="screen" id="screen-cart">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Today's Cart · <span id="cartDate">20 Oct 2026</span></p>
+          <h1>TODAY'S CART</h1>
+          <p class="lead">Edit items freely — totals update instantly.</p>
+        </div>
+
+        <div id="cartEmpty" class="empty-state mt-6">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></path></svg>
+          <h3>Your cart is empty</h3>
+          <p class="text-muted text-sm mt-3">Start by selecting vegetables.</p>
+          <div class="actions mt-6">
+            <button class="btn btn-primary" id="btnCartBrowse">Browse Vegetables</button>
+          </div>
+        </div>
+
+        <div id="cartList" class="mt-6 hidden">
+          <!-- cart lines injected -->
+        </div>
+
+        <div class="card mt-6">
+          <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
+            <div class="row between">
+              <div><strong>Total Quantity</strong></div>
+              <div class="value" id="cartTotalQty" style="font-variant-numeric: tabular-nums;">1,200 kg</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Total Investment</strong></div>
+              <div class="value" id="cartTotalInv" style="font-variant-numeric: tabular-nums;">₹34,000</div>
+            </div>
+          </div>
+          <div class="actions mt-4" style="padding: 0 var(--space-5) var(--space-5); display: flex; gap: var(--space-3);">
+            <button class="btn btn-primary flex1" id="btnCartContinue">Continue → Allocate</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S13 ALLOCATE PER ITEM ==================== -->
+  <section class="screen" id="screen-allocate">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Allocate per Item</p>
+          <h1 id="allocItemName">Tomato</h1>
+          <p class="lead" id="allocItemQty">Total quantity: 500 kg</p>
+        </div>
+
+        <div id="allocList" class="mt-6">
+          <!-- allocation rows injected -->
+        </div>
+
+        <div id="allocRemaining" class="card mt-6 hidden">
+          <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
+            <p class="eyebrow">Remaining Quantity</p>
+            <strong id="allocRemainingText">50 kg (10%) not yet allocated</strong>
+          </div>
+          <div style="padding: var(--space-5); display: flex; gap: var(--space-3);">
+            <button class="btn btn-primary flex1" id="btnAllocRemainingInv">Move to Inventory</button>
+            <button class="btn btn-secondary flex1" id="btnAllocRemainingLoss">Mark as Loss/Waste</button>
+          </div>
+        </div>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnAllocBack">Back to Cart</button>
+          <button class="btn btn-primary" id="btnAllocNext" disabled>Next → Expenses</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S14 REVIEW EVERYTHING ==================== -->
+  <section class="screen" id="screen-review">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Review Before Confirm</p>
+          <h1>REVIEW EVERYTHING</h1>
+          <p class="lead">Check every section before the single confirmation.</p>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div><p class="eyebrow">1</p><h3>Item Summary</h3></div>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="btnReviewEditItem">Edit</button>
+          </div>
+          <div style="padding: var(--space-5);" id="reviewItemSummary">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div><p class="eyebrow">2</p><h3>Institution Summary</h3></div>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="btnReviewEditInst">Edit</button>
+          </div>
+          <div style="padding: var(--space-5);" id="reviewInstSummary">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div><p class="eyebrow">3</p><h3>Inventory Movement</h3></div>
+          </div>
+          <div style="padding: var(--space-5);" id="reviewInvSummary">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div><p class="eyebrow">4</p><h3>Expenses</h3></div>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="btnReviewEditExp">Edit</button>
+          </div>
+          <div style="padding: var(--space-5);" id="reviewExpSummary">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head">
+            <div><p class="eyebrow">5</p><h3>Analysis (Pre-Confirmation)</h3></div>
+          </div>
+          <div style="padding: var(--space-5);" id="reviewAnalysis">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div id="reviewWarnings" class="card mt-6 hidden">
+          <div style="padding: var(--space-5); border-left: 3px solid var(--warn); background: color-mix(in oklab, var(--warn), white 90%);">
+            <p class="eyebrow">⚠ Warnings / Validation</p>
+            <ul id="reviewWarningList" style="margin: var(--space-3) 0 0; padding-left: var(--space-4); color: var(--fg-2);"></ul>
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div style="padding: var(--space-5); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+            <div class="row between">
+              <div><strong>Total Investment (New Purchase)</strong></div>
+              <div class="value" id="revNewPurchase" style="font-variant-numeric: tabular-nums;">₹34,000</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Inventory Used Cost</strong></div>
+              <div class="value" id="revInvUsed" style="font-variant-numeric: tabular-nums;">₹0</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Additional Expenses</strong></div>
+              <div class="value" id="revExpenses" style="font-variant-numeric: tabular-nums;">₹3,000</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Total Cost</strong></div>
+              <div class="value bold" id="revTotalCost" style="font-variant-numeric: tabular-nums;">₹37,000</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Expected Revenue</strong></div>
+              <div class="value" id="revRevenue" style="font-variant-numeric: tabular-nums;">₹43,500</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Expected Profit</strong></div>
+              <div class="value profit" id="revProfit" style="font-variant-numeric: tabular-nums;">+₹6,500</div>
+            </div>
+            <div class="row between mt-2">
+              <div><strong>Profit Margin</strong></div>
+              <div class="value" id="revMargin" style="font-variant-numeric: tabular-nums;">14.94%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnReviewBack">Back</button>
+          <button class="btn btn-primary" id="btnReviewConfirm">Confirm &amp; Complete</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S15 FINAL CONFIRMATION ==================== -->
+  <section class="screen" id="screen-confirm">
+    <div class="container">
+      <section>
+        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+          <div style="width: 64px; height: 64px; background: var(--surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6);">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--accent); width: 32px; height: 32px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <h2>Final Confirmation</h2>
+          <p class="lead mt-4 text-muted mt-4">Review the complete result before confirming.</p>
+          
+          <div class="card mt-6" style="max-width: 400px; margin: 0 auto;">
+            <div style="padding: var(--space-5);">
+              <div class="list-row">
+                <div class="main"><div class="value">Total Investment</div><div class="sub">New purchase + inventory used</div></div>
+                <div class="value" id="confInvestment">₹37,000</div>
+              </div>
+              <div class="list-row">
+                <div class="main"><div class="value">Expected Revenue</div><div class="sub">Institution supplies</div></div>
+                <div class="value" id="confRevenue">₹43,500</div>
+              </div>
+              <div class="list-row">
+                <div class="main"><div class="value">Expected Profit</div><div class="sub">Revenue − Total cost</div></div>
+                <div class="value profit" id="confProfit">+₹6,500</div>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-muted text-sm mt-4">One confirmation for the entire cart — cannot be per item or per institution.</p>
+        </div>
+
+        <div class="actions mt-8" style="display: flex; gap: var(--space-3); justify-content: center;">
+          <button class="btn btn-secondary" id="btnConfEditCart">Edit Cart</button>
+          <button class="btn btn-primary" id="btnConfConfirm">Confirm &amp; Complete</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S16 CART COMPLETED ==================== -->
+  <section class="screen" id="screen-completed">
+    <div class="container">
+      <section>
+        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 72px;">
+          <div style="width: 80px; height: 80px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
+            <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 36px; height: 36px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h2>Cart Completed ✓</h2>
+          <p class="lead mt-4 text-muted">Transaction saved. Inventory, history, and P&L updated.</p>
+
+          <div class="card mt-6" style="max-width: 400px; margin: 0 auto;">
+            <div style="padding: var(--space-5);">
+              <div class="list-row">
+                <div class="main"><div class="value">Transaction</div><div class="sub">TRX-20261020 · R1</div></div>
+                <div class="value" id="compDate">20 Oct 2026</div>
+              </div>
+              <div class="list-row">
+                <div class="main"><div class="value">Investment</div><div class="sub">₹37,000</div></div>
+                <div class="value">₹43,500</div>
+              </div>
+              <div class="list-row">
+                <div class="main"><div class="value">Profit</div><div class="sub">+₹6,500 · 14.94%</div></div>
+                <div class="value profit">+₹6,500</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions mt-8" style="display: flex; flex-direction: column; gap: var(--space-3); align-items: center;">
+            <button class="btn btn-secondary" id="btnCompDetails">View Details</button>
+            <button class="btn btn-secondary" id="btnCompHistory">View History</button>
+            <button class="btn btn-primary" id="btnCompHome">Back to Home</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S17 INSTITUTION LIST ==================== -->
+  <section class="screen" id="screen-inst-list">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Institutions</p>
+          <h1>Institution List</h1>
+          <p class="lead">Institutions you supply, with their tender prices.</p>
+        </div>
+        <div class="field mt-4">
+          <label>Search</label>
+          <input type="text" id="instSearch" placeholder="Institution name…" />
+        </div>
+        <div id="instListView" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInstListBack">Back</button>
+          <button class="btn btn-primary" id="btnInstListAdd">+ Add Institution</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S18 CREATE / EDIT INSTITUTION ==================== -->
+  <section class="screen" id="screen-inst-edit">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Institutions</p>
+          <h1 id="instEditTitle">Create Institution</h1>
+          <p class="lead">Set up an institution with tender periods and fixed prices.</p>
+        </div>
+        <form id="formInstEdit" novalidate>
+          <div class="field">
+            <label>Institution Name <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="ieName" required />
+          </div>
+          <div class="row wrap" style="gap: var(--space-3);">
+            <div style="flex:1;"><div class="field"><label>Contact Person</label><input type="text" id="ieContact" placeholder="e.g. Mr. Sharma" /></div></div>
+            <div style="flex:1;"><div class="field"><label>Phone</label><input type="tel" id="iePhone" placeholder="e.g. 9876543210" /></div></div>
+          </div>
+          <div class="field"><label>Address / Location</label><input type="text" id="ieAddr" placeholder="e.g. Market Yard, APMC" /></div>
+          <div class="field mt-4">
+            <label>Tenders</label>
+            <div id="ieTenders" class="stack">
+              <!-- tender rows injected -->
+            </div>
+            <button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs); margin-top: var(--space-2);" id="ieAddTender">+ Add Tender</button>
+          </div>
+          <div class="field mt-4"><label>Notes (optional)</label><textarea id="ieNotes" rows="3" placeholder="Any notes…"></textarea></div>
+        </form>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInstEditBack">Back</button>
+          <button class="btn btn-primary" id="btnInstEditSave">Save</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S19 INSTITUTION PROFILE ==================== -->
+  <section class="screen" id="screen-inst-profile">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Institutions</p>
+          <h1 id="profName">Institution A</h1>
+          <p class="lead" id="profSub">Mr. Sharma · 9876543210</p>
+        </div>
+
+        <div class="card mt-6">
+          <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
+            <p class="eyebrow">Details</p>
+            <div class="list-row"><div class="main"><div class="value">Contact</div><div class="sub">Mr. Sharma</div></div><div class="value">9876543210</div></div>
+            <div class="list-row"><div class="main"><div class="value">Address</div><div class="sub">Market Yard, APMC · Mumbai</div></div><span class="badge badge-green">Active</span></div>
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head"><div><p class="eyebrow">Tenders</p><h3>Tender Periods</h3></div><button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="profAddTender">+ Add Tender</button></div>
+          <div style="padding: var(--space-5);" id="profTenders">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head"><div><p class="eyebrow">Fixed Tender Prices</p><h3>Per Tender</h3></div><button class="btn btn-secondary" style="padding: 4px 12px; font-size: var(--text-xs);" id="profPrices">Manage Prices</button></div>
+          <div style="padding: var(--space-5);" id="profPriceSummary">
+            <!-- injected -->
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div class="panel-head"><div><p class="eyebrow">Receivables &amp; Payments</p><h3>Dues Overview</h3></div></div>
+          <div style="padding: var(--space-5);">
+            <div class="list-row"><div class="main"><div class="value">Total Billed</div><div class="sub">₹21,050</div></div><div class="value">₹21,050</div></div>
+            <div class="list-row"><div class="main"><div class="value">Collected</div><div class="sub">₹15,000</div></div><div class="value">₹15,000</div></div>
+            <div class="list-row"><div class="main"><div class="value">Pending</div><div class="sub">₹5,550 · 45 days aging</div></div><div class="value loss">₹5,550</div></div>
+          </div>
+          <div class="actions mt-4" style="padding: 0 var(--space-5) var(--space-5); display: flex; gap: var(--space-3);">
+            <button class="btn btn-primary flex1" id="profRecordPay">Record Payment</button>
+            <button class="btn btn-secondary flex1" id="profPrepareBill">Prepare Bill</button>
+          </div>
+        </div>
+
+        <div class="card mt-6">
+          <div style="padding: var(--space-5); border-top: 1px solid var(--border-soft);">
+            <p class="eyebrow">Financial Performance</p>
+            <div class="metric-grid">
+              <div class="metric"><strong>Total Supply</strong><span>1,150 kg</span></div>
+              <div class="metric"><strong>Revenue</strong><span>₹43,500</span></div>
+              <div class="metric"><strong>Allocated Cost</strong><span>₹32,500</span></div>
+              <div class="metric green"><strong>Profit</strong><span>+₹11,000</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnProfBack">Back</button>
+          <button class="btn btn-primary" id="btnProfEdit">Edit Institution</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S20 TENDER MANAGEMENT ==================== -->
+  <section class="screen" id="screen-tender-mgmt">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Institutions &gt; Tender</p>
+          <h1 id="tmgmtTitle">Tender Management</h1>
+          <p class="lead">Tender periods, payment terms, and demanded quantities.</p>
+        </div>
+        <div id="tmgmtList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnTmgmtBack">Back</button>
+          <button class="btn btn-primary" id="btnTmgmtAdd">+ Add Tender</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S21 FIXED TENDER PRICES ==================== -->
+  <section class="screen" id="screen-tender-prices">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Institutions &gt; Tender &gt; Prices</p>
+          <h1 id="tpTitle">Fixed Tender Prices</h1>
+          <p class="lead" id="tpSub">Per-item rates for this tender.</p>
+        </div>
+        <div id="tpList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnTPBack">Back</button>
+          <button class="btn btn-primary" id="btnTPAdd">+ Add Item Price</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S22 RECEIVABLES (in profile) ==================== -->
+  <section class="screen" id="screen-receivables">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Payments &amp; Dues</p>
+          <h1>Institution Receivables</h1>
+          <p class="lead">Accrued dues per tender and period.</p>
+        </div>
+        <div id="rcvList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnRcvBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S23 DUES OVERVIEW ==================== -->
+  <section class="screen" id="screen-dues">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Payments &amp; Dues</p>
+          <h1>Dues Overview</h1>
+          <p class="lead">Who owes you, how much, and since when.</p>
+        </div>
+        <div class="card mt-6">
+          <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
+            <p class="eyebrow">Pending Split</p>
+            <div class="metric-grid">
+              <div class="metric"><strong>Total Pending</strong><span>₹36,500</span></div>
+              <div class="metric"><strong>Billed Pending</strong><span>₹5,550</span></div>
+              <div class="metric"><strong>Unbilled (Accrued)</strong><span>₹30,950</span></div>
+            </div>
+          </div>
+        </div>
+        <div id="duesList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnDuesBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S24 INVENTORY DASHBOARD ==================== -->
+  <section class="screen" id="screen-inventory">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Inventory</p>
+          <h1>Stock on Hand</h1>
+          <p class="lead">Rejected, remaining, and reusable stock.</p>
+        </div>
+        <div class="metric-grid mt-4">
+          <div class="metric"><strong id="invTotalQty">50 kg</strong><span>Available</span></div>
+          <div class="metric"><strong id="invTotalValue">₹1,500</strong><span>Stock Value</span></div>
+          <div class="metric"><strong id="invItemCount">1</strong><span>Items</span></div>
+          <div class="metric"><strong id="invAttention">1</strong><span>Need Attention</span></div>
+        </div>
+        <div class="row wrap mt-4" style="gap: var(--space-2);">
+          <button class="btn btn-secondary" id="invFiltAll">All</button>
+          <button class="btn btn-secondary" id="invFiltAvail">Available</button>
+          <button class="btn btn-secondary" id="invFiltPartial">Partially Used</button>
+          <button class="btn btn-secondary" id="invFiltRejected">Rejected</button>
+          <button class="btn btn-secondary" id="invFiltWaste">Waste/Loss</button>
+        </div>
+        <div id="invList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInvBack">Back</button>
+          <button class="btn btn-primary" id="btnInvAddStock">+ Add Stock Manually</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S25 INVENTORY ITEM DETAIL ==================== -->
+  <section class="screen" id="screen-inv-detail">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Inventory</p>
+          <h1 id="invDetName">Tomato</h1>
+          <p class="lead" id="invDetMeta">Lot · Available 50 kg · Original Cost ₹30/kg</p>
+        </div>
+        <div class="card mt-6">
+          <div style="padding: var(--space-5);">
+            <div class="list-row"><div class="main"><div class="value">Available</div><div class="sub">Quantity on hand</div></div><div class="value" id="invDetAvail" style="font-variant-numeric: tabular-nums;">50 kg</div></div>
+            <div class="list-row"><div class="main"><div class="value">Original Cost</div><div class="sub">₹ per base unit</div></div><div class="value" id="invDetCost" style="font-variant-numeric: tabular-nums;">₹30/kg</div></div>
+            <div class="list-row"><div class="main"><div class="value">Stock Value</div><div class="sub">Available × original rate</div></div><div class="value" id="invDetValue" style="font-variant-numeric: tabular-nums;">₹1,500</div></div>
+            <div class="list-row"><div class="main"><div class="value">Source</div><div class="sub">Where this lot came from</div></div><div class="value" id="invDetSource">Institution A — Rejected</div></div>
+            <div class="list-row"><div class="main"><div class="value">Age</div><div class="sub">Days since added</div></div><div class="value" id="invDetAge">1 day</div></div>
+            <div class="list-row"><div class="main"><div class="value">Status</div><div class="sub">Lot lifecycle state</div></div><div class="value badge badge-green" id="invDetStatus">Available</div></div>
+          </div>
+        </div>
+        <div class="card mt-6">
+          <p class="eyebrow">Movement History</p>
+          <div style="padding: var(--space-5);" id="invDetHistory">
+            <!-- injected -->
+          </div>
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnInvDetBack">Back</button>
+          <button class="btn btn-primary flex1" id="btnInvDetUse">Use in Supply</button>
+          <button class="btn btn-secondary flex1" id="btnInvDetSell">Sell</button>
+          <button class="btn btn-secondary flex1" id="btnInvDetWaste">Mark Waste</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S26 EXPENSES ==================== -->
+  <section class="screen" id="screen-expenses">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Expenses</p>
+          <h1>Today's Expenses</h1>
+          <p class="lead">Transport, labour, packaging, and more.</p>
+        </div>
+        <div id="expList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnExpBack">Back</button>
+          <button class="btn btn-primary" id="btnExpAdd">+ Add Expense</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S27 SELLER PAYABLES ==================== -->
+  <section class="screen" id="screen-payables">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Seller Payables</p>
+          <h1>Mandi Seller Credit</h1>
+          <p class="lead">On-credit purchases and settlements.</p>
+        </div>
+        <div id="payList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnPayBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S28 HISTORY DASHBOARD ==================== -->
+  <section class="screen" id="screen-history">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">History</p>
+          <h1>Transactions</h1>
+          <p class="lead">Completed carts and other day entries by date.</p>
+        </div>
+        <div class="row wrap mt-4" style="gap: var(--space-2);">
+          <button class="btn btn-secondary" id="histFiltToday">Today</button>
+          <button class="btn btn-secondary" id="histFilt7d">Last 7 Days</button>
+          <button class="btn btn-secondary" id="histFiltMonth">This Month</button>
+          <button class="btn btn-secondary" id="histFiltCustom">Custom Range</button>
+        </div>
+        <div id="histList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnHistBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S29 TRANSACTION DETAIL ==================== -->
+  <section class="screen" id="screen-trx-detail">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">History &gt; Transaction</p>
+          <h1 id="trxTitle">TRX-20261020</h1>
+          <p class="lead" id="trxSub">Frozen snapshot — 20 Oct 2026 · R1</p>
+        </div>
+        <div id="trxTabs" class="row wrap mt-4" style="gap: var(--space-2); overflow-x: auto;">
+          <!-- tabs injected -->
+        </div>
+        <div id="trxContent" class="mt-6">
+          <!-- content injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnTrxBack">Back</button>
+          <button class="btn btn-primary" id="btnTrxReopen">Re-open &amp; Correct</button>
+          <button class="btn btn-secondary" id="btnTrxMemo">Memo / Bill</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S30 OTHER DAY ENTRIES ==================== -->
+  <section class="screen" id="screen-other-entries">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">History &gt; Entry</p>
+          <h1 id="oeTitle">Other Day Entry</h1>
+          <p class="lead" id="oeSub">Date-anchored sale, waste, adjustment, or settlement.</p>
+        </div>
+        <div id="oeContent" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnOEBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S31 P&L DASHBOARD ==================== -->
+  <section class="screen" id="screen-pl">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Profit &amp; Loss</p>
+          <h1>P&L Dashboard</h1>
+          <p class="lead">Transaction-based profit — never mixed with cash.</p>
+        </div>
+        <div class="metric-grid mt-4">
+          <div class="metric"><strong>₹5,00,000</strong><span>Total Investment</span></div>
+          <div class="metric"><strong>₹6,20,000</strong><span>Total Revenue</span></div>
+          <div class="metric"><strong>₹40,000</strong><span>Total Expenses</span></div>
+          <div class="metric green"><strong>+₹80,000</strong><span>Overall Profit</span></div>
+        </div>
+        <div class="row wrap mt-4" style="gap: var(--space-2);">
+          <button class="btn btn-secondary" id="plTabOverall">Overall</button>
+          <button class="btn btn-secondary" id="plTabDaily">Daily</button>
+          <button class="btn btn-secondary" id="plTabWeekly">Weekly</button>
+          <button class="btn btn-secondary" id="plTabMonthly">Monthly</button>
+          <button class="btn btn-secondary" id="plTabInst">Institution-wise</button>
+          <button class="btn btn-secondary" id="plTabContract">Contract-wise</button>
+          <button class="btn btn-secondary" id="plTabVeg">Vegetable-wise</button>
+        </div>
+        <div id="plContent" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnPLBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S32 REPORTS DASHBOARD ==================== -->
+  <section class="screen" id="screen-reports">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Reports</p>
+          <h1>Reports</h1>
+          <p class="lead">Spot and stop profit leaks.</p>
+        </div>
+        <div id="rptList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnRptBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S33 REPORT DETAIL ==================== -->
+  <section class="screen" id="screen-report-detail">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Reports &gt; Detail</p>
+          <h1 id="rptDetTitle">Report Detail</h1>
+          <p class="lead" id="rptDetSub">Structured summary — export as PDF/CSV.</p>
+        </div>
+        <div id="rptDetContent" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnRptDetBack">Back</button>
+          <button class="btn btn-primary" id="btnRptDetExport">Export →</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S34 SETTINGS DASHBOARD ==================== -->
+  <section class="screen" id="screen-settings">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings</p>
+          <h1>Settings Dashboard</h1>
+          <p class="lead">Business, items, data, and alerts.</p>
+        </div>
+        <div id="settingsList" class="mt-6">
+          <!-- injected -->
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S35 ITEM MANAGEMENT ==================== -->
+  <section class="screen" id="screen-item-mgmt">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; Items</p>
+          <h1>Item Management</h1>
+          <p class="lead">Add, edit, or deactivate items.</p>
+        </div>
+        <div id="itemMgmtList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnItemMgmtBack">Back</button>
+          <button class="btn btn-primary" id="btnItemMgmtAdd">+ Add Item</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S36 BUSINESS SETTINGS ==================== -->
+  <section class="screen" id="screen-business">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; Business</p>
+          <h1>Business Settings</h1>
+          <p class="lead">Business name, currency, default unit.</p>
+        </div>
+        <form id="formBusiness" novalidate>
+          <div class="field">
+            <label>Business Name</label>
+            <input type="text" id="bizName" value="My Vegetable Business" />
+          </div>
+          <div class="field">
+            <label>Currency</label>
+            <input type="text" id="bizCurrency" value="₹" readonly />
+          </div>
+          <div class="field">
+            <label>Default Unit</label>
+            <select id="bizDefaultUnit"><option>kg</option><option>litre</option><option>sack</option></select>
+          </div>
+          <div class="field">
+            <label>Default Shelf-Life Policy (days)</label>
+            <input type="number" id="bizShelfLife" value="7" min="0" />
+          </div>
+        </form>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnBizBack">Back</button>
+          <button class="btn btn-primary" id="btnBizSave">Save</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S37 APP SETTINGS ==================== -->
+  <section class="screen" id="screen-app-settings">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; App</p>
+          <h1>App Settings</h1>
+          <p class="lead">Alert thresholds, categories, reasons, backup.</p>
+        </div>
+        <div class="card mt-6">
+          <div style="padding: var(--space-5);">
+            <div class="field">
+              <label>Long-Pending Dues (days)</label>
+              <input type="number" id="appLongPending" value="30" min="0" />
+              <span class="text-muted text-sm">Default 30 — drives Long-Pending Dues alert.</span>
+            </div>
+            <div class="field mt-4">
+              <label>Tender Ending Soon (days)</label>
+              <input type="number" id="appTenderEnding" value="7" min="0" />
+              <span class="text-muted text-sm">Default 7 — drives Tender Ending Soon alert.</span>
+            </div>
+            <div class="field mt-4">
+              <label>Seller Payable Alert (days)</label>
+              <input type="number" id="appSellerPayable" value="3" min="0" />
+              <span class="text-muted text-sm">Default 3 — drives Seller Payable Due alert.</span>
+            </div>
+            <div class="field mt-4">
+              <label>Backup Reminder Interval (days)</label>
+              <input type="number" id="appBackup" value="7" min="0" />
+              <span class="text-muted text-sm">Default 7 — drives Backup Due alert.</span>
+            </div>
+          </div>
+        </div>
+        <div class="card mt-6">
+          <div style="padding: var(--space-5);">
+            <p class="eyebrow">Editors</p>
+            <div class="actions mt-3" style="display: flex; flex-direction: column; gap: var(--space-3);">
+              <button class="btn btn-secondary flex1" id="appEditCategories">Expense Category Editor</button>
+              <button class="btn btn-secondary flex1" id="appEditReasons">Reason Editor</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnAppBack">Back</button>
+          <button class="btn btn-primary" id="btnAppSave">Save</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S38 EXPENSE CATEGORY EDITOR ==================== -->
+  <section class="screen" id="screen-categories">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; App &gt; Categories</p>
+          <h1>Expense Category Editor</h1>
+          <p class="lead">Configurable expense types — Transport, Labour, Packaging…</p>
+        </div>
+        <div id="catList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnCatBack">Back</button>
+          <button class="btn btn-primary" id="btnCatAdd">+ Add Category</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S39 REASON EDITOR ==================== -->
+  <section class="screen" id="screen-reasons">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; App &gt; Reasons</p>
+          <h1>Reason Editor</h1>
+          <p class="lead">One editable set shared by deductions, waste, and rejection.</p>
+        </div>
+        <div id="reasonList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnReasonBack">Back</button>
+          <button class="btn btn-primary" id="btnReasonAdd">+ Add Reason</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S40 DATA MANAGEMENT ==================== -->
+  <section class="screen" id="screen-data">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Settings &gt; Data</p>
+          <h1>Data Management</h1>
+          <p class="lead">Backup, restore, export, import — version-tagged.</p>
+        </div>
+        <div class="card mt-6">
+          <div style="padding: var(--space-5);">
+            <div class="actions mt-3" style="display: flex; flex-direction: column; gap: var(--space-3);">
+              <button class="btn btn-secondary flex1" id="dataBackup">Backup →</button>
+              <button class="btn btn-secondary flex1" id="dataRestore">Restore →</button>
+              <button class="btn btn-secondary flex1" id="dataExport">Export Data →</button>
+              <button class="btn btn-secondary flex1" id="dataImport">Import Data →</button>
+              <button class="btn btn-danger flex1" id="dataDeleteAll">Delete All Data →</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnDataBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S41 ABOUT ==================== -->
+  <section class="screen" id="screen-about">
+    <div class="container">
+      <section>
+        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 72px;">
+          <div style="width: 64px; height: 64px; background: var(--accent); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
+            <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 32px; height: 32px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></path></svg>
+          </div>
+          <h2>Vegetable Contractor</h2>
+          <p class="lead mt-4 text-muted">Management App v2.9 · Single-user contractor tool · English-only</p>
+          <p class="text-muted text-sm mt-4">Built for the vegetable contractor who wants to maximize profit on institution tenders.</p>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== S42 ATTENTION CENTER ==================== -->
+  <section class="screen" id="screen-attention">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Notifications</p>
+          <h1>Attention Center</h1>
+          <p class="lead">All alerts in-app — no OS notifications in v1.</p>
+        </div>
+        <div id="attnList" class="mt-6">
+          <!-- injected -->
+        </div>
+        <div class="btn-sticky">
+          <button class="btn btn-secondary" id="btnAttnBack">Back</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== DIALOGS & BOTTOM SHEETS (overlays) ==================== -->
+  <div class="overlay" id="overlay-dl1" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Remove Item</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body">Remove this item from today's cart?</div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" id="dl1Cancel">Cancel</button>
+        <button class="btn btn-danger" id="dl1Remove">Remove</button>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay-dl6" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Confirm &amp; Complete</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body">Confirm the entire daily cart once. This cannot be undone per item.</div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" id="dl6Cancel">Cancel</button>
+        <button class="btn btn-primary" id="dl6Confirm">Confirm &amp; Complete</button>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay-dl7" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Delete All Data</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body">This will permanently erase all transactions, inventory, institutions, and settings. Cannot be undone.</div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" id="dl7Cancel">Cancel</button>
+        <button class="btn btn-danger" id="dl7Delete">Delete All</button>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay-dl10" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Discard Cart</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body">Discard today's cart? Entered items will be removed and inventory reservations released.</div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" id="dl10Cancel">Cancel</button>
+        <button class="btn btn-danger" id="dl10Discard">Discard</button>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay-dl13" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Revision Selector</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body" id="dl13Body">Available revisions:</div>
+      <div class="modal-foot"><button class="btn btn-secondary" id="dl13Close">Close</button></div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay-dl14" style="display:none;">
+    <div class="modal">
+      <div class="modal-head"><div style="font-weight:700;">Attachment Viewer</div><button class="overlay-close">✕</button></div>
+      <div class="modal-body" id="dl14Body">Photo evidence preview.</div>
+      <div class="modal-foot"><button class="btn btn-secondary" id="dl14Close">Close</button></div>
+    </div>
+  </div>
+
+  <!-- ==================== S-MORE HUB ==================== -->
+  <section class="screen" id="screen-more">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">More</p>
+          <h1>More</h1>
+          <p class="lead">Institutions, payments, reports, settings.</p>
+        </div>
+        <div id="moreList" class="mt-6">
+          <div class="list-row" onclick="navigate('#screen-inst-list')" style="cursor:pointer;"><div class="main"><div class="value">Institutions</div><div class="sub">Profiles, tenders, fixed prices</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-dues')" style="cursor:pointer;"><div class="main"><div class="value">Payments &amp; Dues</div><div class="sub">Per-institution pending, billing</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-payables')" style="cursor:pointer;"><div class="main"><div class="value">Seller Payables</div><div class="sub">Mandi seller credit &amp; settlements</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-pl')" style="cursor:pointer;"><div class="main"><div class="value">Profit &amp; Loss</div><div class="sub">Overall, institution, contract, vegetable</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-history')" style="cursor:pointer;"><div class="main"><div class="value">History</div><div class="sub">Transactions &amp; other day entries</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-reports')" style="cursor:pointer;"><div class="main"><div class="value">Reports</div><div class="sub">14 report types · Export PDF/CSV</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-settings')" style="cursor:pointer;"><div class="main"><div class="value">Settings</div><div class="sub">Business, items, app, data</div></div><span class="badge badge-gray">→</span></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <script>
+    /* ========== App State (seeded from §16 canonical dataset) ========== */
+    const state = {
+      setupDone: false,
+      currency: '₹',
+      defaultUnit: 'kg',
+      businessName: '',
+      items: [
+        { id: 'i1', name: 'Tomato', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 3, active: true },
+        { id: 'i2', name: 'Potato', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 14, purchaseUnit: { label: 'bag', factor: 50 }, active: true },
+        { id: 'i3', name: 'Onion', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 30, active: true },
+        { id: 'i4', name: 'Carrot', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i5', name: 'Cabbage', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i6', name: 'Cauliflower', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i7', name: 'Brinjal', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i8', name: 'Beans', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i9', name: 'Green Chilli', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i10', name: "Lady's Finger", category: 'Vegetables', unit: 'kg', image: null, shelfLife: 7, active: true },
+        { id: 'i11', name: 'Coriander', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 1, active: true },
+        { id: 'i12', name: 'Spinach', category: 'Vegetables', unit: 'kg', image: null, shelfLife: 1, active: true },
+        { id: 'i13', name: 'Rice', category: 'Groceries', unit: 'kg', image: null, shelfLife: null, active: true },
+        { id: 'i14', name: 'Dal', category: 'Groceries', unit: 'kg', image: null, shelfLife: null, active: true },
+        { id: 'i15', name: 'Oil', category: 'Groceries', unit: 'litre', image: null, shelfLife: null, active: true },
+        { id: 'i16', name: 'Sugar', category: 'Groceries', unit: 'kg', image: null, shelfLife: null, active: true },
+      ],
+      institutions: [
+        {
+          id: 'instA', name: 'Institution A', contact: 'Mr. Sharma', phone: '9876543210', address: 'Market Yard, APMC', location: 'Mumbai',
+          tenders: [{ id: 'tA1', name: 'Tender 1', number: 'TND-A-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+          fixedPrices: { 'tA1': [{ itemId: 'i1', rate: 40 }, { itemId: 'i2', rate: 35 }, { itemId: 'i3', rate: 38 }] },
+          active: true
+        },
+        {
+          id: 'instB', name: 'Institution B', contact: 'Ms. Rao', phone: '9876543211', address: 'Wholesale Market', location: 'Pune',
+          tenders: [{ id: 'tB1', name: 'Tender 1', number: 'TND-B-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+          fixedPrices: { 'tB1': [{ itemId: 'i1', rate: 45 }, { itemId: 'i2', rate: 32 }, { itemId: 'i3', rate: 40 }] },
+          active: true
+        },
+        {
+          id: 'instC', name: 'Institution C', contact: 'Mr. Patel', phone: '9876543212', address: 'Mandi Road', location: 'Nagpur',
+          tenders: [{ id: 'tC1', name: 'Tender 1', number: 'TND-C-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+          fixedPrices: { 'tC1': [{ itemId: 'i1', rate: 38 }, { itemId: 'i2', rate: 36 }, { itemId: 'i3', rate: 35 }] },
+          active: true
+        }
+      ],
+      cart: { date: '2026-10-20', items: [], confirmed: false },
+      transactions: [
+        {
+          id: 'TRX-20261020', date: '2026-10-20', status: 'confirmed', revision: 'R1',
+          items: [
+            { itemId: 'i1', qty: 500, rate: 30, cost: 15000, source: 'Mandi Seller', quality: '', payment: 'on-credit', seller: 'Mandi Seller', dueDate: '2026-10-27' },
+            { itemId: 'i2', qty: 400, rate: 25, cost: 10000, source: 'Mandi Seller', quality: '', payment: 'paid-now', seller: '', dueDate: '' },
+            { itemId: 'i3', qty: 300, rate: 30, cost: 9000, source: 'Mandi Seller', quality: '', payment: 'paid-now', seller: '', dueDate: '' }
+          ],
+          allocations: [
+            { itemId: 'i1', instId: 'instA', tenderId: 'tA1', qty: 200, rate: 40, revenue: 8000, cost: 12750, custom: false },
+            { itemId: 'i1', instId: 'instB', tenderId: 'tB1', qty: 150, rate: 45, revenue: 6750, cost: 11250, custom: false },
+            { itemId: 'i1', instId: 'instC', tenderId: 'tC1', qty: 100, rate: 38, revenue: 3800, cost: 8500, custom: false },
+            { itemId: 'i2', instId: 'instA', tenderId: 'tA1', qty: 150, rate: 35, revenue: 5250, cost: 9375, custom: false },
+            { itemId: 'i2', instId: 'instB', tenderId: 'tB1', qty: 150, rate: 32, revenue: 4800, cost: 9000, custom: false },
+            { itemId: 'i2', instId: 'instC', tenderId: 'tC1', qty: 100, rate: 36, revenue: 3600, cost: 6000, custom: false },
+            { itemId: 'i3', instId: 'instA', tenderId: 'tA1', qty: 100, rate: 38, revenue: 3800, cost: 4750, custom: false },
+            { itemId: 'i3', instId: 'instB', tenderId: 'tB1', qty: 100, rate: 40, revenue: 4000, cost: 5000, custom: false },
+            { itemId: 'i3', instId: 'instC', tenderId: 'tC1', qty: 100, rate: 35, revenue: 3500, cost: 4250, custom: false }
+          ],
+          remaining: [{ itemId: 'i1', qty: 50, action: 'inventory', rate: 30, cost: 1500 }],
+          rejected: [],
+          expenses: [
+            { type: 'Transport', amount: 1000, note: '', assignedTo: 'day' },
+            { type: 'Labour', amount: 1000, note: '', assignedTo: 'day' },
+            { type: 'Packaging', amount: 500, note: '', assignedTo: 'day' }
+          ],
+          revenue: 43500, newPurchaseCost: 34000, inventoryUsedCost: 0, expensesTotal: 3000,
+          totalCost: 37000, profit: 6500, margin: 14.94
+        }
+      ],
+      inventory: [
+        { id: 'lot1', itemId: 'i1', qty: 0, originalRate: 30, status: 'Sold', source: 'Day 1 — Remaining', dateAdded: '2026-10-20', movements: [] }
+      ],
+      payables: [],
+      settings: {
+        overdueAlertDays: 7, longPendingDays: 30, tenderEndingDays: 7, sellerPayableDays: 3, backupInterval: 7,
+        expenseCategories: ['Transport', 'Labour', 'Loading', 'Unloading', 'Packaging', 'Other'],
+        reasons: ['Quality', 'Damage', 'Quantity/short weight', 'Return', 'Other', 'Spoiled', 'Damaged']
+      },
+      currentScreen: 'splash',
+      toastQueue: []
+    };
+
+    /* ========== Helpers ========== */
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    function formatINR(num, decimals = 0) {
+      const n = Math.abs(num);
+      const parts = n.toFixed(decimals).split('.');
+      let int = parts[0];
+      const negative = num < 0;
+      // Indian grouping
+      let out = '';
+      let i = int.length;
+      while (i > 0) {
+        const take = (out === '' ? 3 : 2);
+        const start = Math.max(0, i - take);
+        out = int.slice(start, i) + (out ? ',' : '') + out;
+        i = start;
+      }
+      return (negative ? '−' : '') + '₹' + out + (decimals ? '.' + parts[1] : '');
+    }
+
+    function formatQty(num) {
+      return Number(num).toFixed(2).replace(/\.?0+$/, '') + '';
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = $('#toastContainer');
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, 2500);
+    }
+
+    function navigate(screenId) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $$('.tab').forEach(t => t.classList.remove('active'));
+      const screen = $(screenId);
+      if (screen) screen.classList.add('active');
+      state.currentScreen = screenId.replace('#screen-', '');
+
+      // Update bottom nav active state
+      const activeTab = $(`.bottom-nav a[data-screen="${screenId.replace('#screen-', '')}"]`);
+      if (activeTab) activeTab.classList.add('active');
+
+      // Update title
+      const titles = {
+        splash: 'Vegetable Contractor', welcome: 'Welcome', profile: 'Business Profile',
+        'initial-items': 'Initial Items', 'initial-institutions': 'Initial Institutions',
+        'setup-complete': 'Setup Complete', home: 'Home', veg: 'Vegetables / Items',
+        cart: "Today's Cart", inventory: 'Inventory', more: 'More'
+      };
+      $('#appTitle').textContent = titles[state.currentScreen] || 'Home';
+
+      // Update cart indicator
+      updateCartIndicator();
+    }
+
+    function updateCartIndicator() {
+      const indicator = $('#cartIndicator');
+      let totalQty = 0, totalInv = 0;
+      state.cart.items.forEach(it => { totalQty += it.qty; totalInv += it.cost; });
+      const hasCart = state.cart.items.length > 0;
+      indicator.classList.toggle('show', hasCart);
+      $('#cartLabel').textContent = hasCart ? 'Cart' : 'Cart';
+      $('#cartSub').textContent = hasCart ? `· ${totalQty} kg · Investment ${formatINR(totalInv)}` : '· 0 Items · Investment ₹0';
+      $('#cartChip').textContent = state.cart.items.length;
+    }
+
+    function goHome() { navigate('#screen-home'); }
+
+    /* ========== App Bar Back ========== */
+    $('#btnBack').addEventListener('click', () => {
+      const backMap = {
+        '#screen-welcome': '#screen-splash',
+        '#screen-profile': '#screen-welcome',
+        '#screen-initial-items': '#screen-profile',
+        '#screen-initial-institutions': '#screen-initial-items',
+        '#screen-setup-complete': '#screen-home',
+        '#screen-veg': '#screen-home',
+        '#screen-cart': '#screen-home',
+        '#screen-inventory': '#screen-home',
+        '#screen-more': '#screen-home'
+      };
+      const target = backMap[`#screen-${state.currentScreen}`];
+      if (target) navigate(target);
+    });
+
+    /* ========== Bottom Nav ========== */
+    $$('.bottom-nav a').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        const screen = tab.dataset.screen;
+        const map = { home: '#screen-home', veg: '#screen-veg', cart: '#screen-cart', inventory: '#screen-inventory', more: '#screen-more' };
+        navigate(map[screen]);
+      });
+    });
+
+    /* ========== Splash auto-route ========== */
+    setTimeout(() => {
+      if (!state.setupDone) navigate('#screen-welcome');
+      else navigate('#screen-home');
+    }, 1200);
+
+    /* ========== Welcome / Intro ========== */
+    let welcomeSlide = 1;
+    $('#btnWelcomeNext').addEventListener('click', () => {
+      if (welcomeSlide === 1) {
+        welcomeSlide = 2;
+        $('#screen-welcome .eyebrow').textContent = 'Slide 2 of 2';
+        $('#screen-welcome h2').textContent = 'Enter once — every rupee tracked.';
+        $('#screen-welcome .lead').textContent = "Today's cart, inventory, dues and waste all start from the same confirm-once record.";
+        $('#screen-welcome .lead').className = 'lead mt-4';
+        $('#screen-welcome .lead').style.maxWidth = '280px';
+        $('#btnWelcomeNext').textContent = 'Get Started';
+      } else {
+        state.setupDone = true;
+        navigate('#screen-profile');
+      }
+    });
+    $('#btnWelcomeSkip').addEventListener('click', () => {
+      state.setupDone = true;
+      navigate('#screen-profile');
+    });
+
+    /* ========== Profile ========== */
+    $('#btnProfileContinue').addEventListener('click', (e) => {
+      e.preventDefault();
+      state.businessName = $('#inpBizName').value || 'My Vegetable Business';
+      navigate('#screen-initial-items');
+    });
+    $('#btnProfileBack').addEventListener('click', () => navigate('#screen-welcome'));
+
+    /* ========== Initial Items ========== */
+    const seedNames = ['Tomato', 'Potato', 'Onion', 'Carrot', 'Cabbage', 'Cauliflower', 'Brinjal', 'Beans', 'Green Chilli', "Lady's Finger", 'Coriander', 'Spinach', 'Rice', 'Dal', 'Oil', 'Sugar'];
+    function renderSeedItems() {
+      const list = $('#seedItemList');
+      list.innerHTML = state.items.filter(i => seedNames.includes(i.name)).map(item => `
+        <div class="list-row" style="padding: var(--space-4) 0;">
+          <div class="main">
+            <div class="value" style="font-size: var(--text-base);">${item.name}</div>
+            <div class="sub">${item.category} · ${item.unit}${item.shelfLife ? ` · shelf-life ${item.shelfLife} days` : ''}</div>
+          </div>
+          <span class="badge badge-gray">Added ✓</span>
+        </div>
+      `).join('');
+    }
+    renderSeedItems();
+
+    $('#btnAddCustomItem').addEventListener('click', () => {
+      // Open S11 custom item editor (minimal inline)
+      openModal('Add Custom Item', `
+        <div class="field">
+          <label>Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="ciName" placeholder="e.g. Capsicum" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="ciCat"><option>Vegetables</option><option>Groceries</option><option>Other Items</option></select>
+        </div>
+        <div class="field">
+          <label>Unit</label>
+          <select id="ciUnit"><option>kg</option><option>litre</option><option>sack</option></select>
+        </div>
+        <div class="field">
+          <label>Shelf-Life Alert (days)</label>
+          <input type="number" id="ciShelf" value="7" min="0" />
+        </div>
+      `, [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: () => closeModal() },
+        { label: 'Save', cls: 'btn-primary', onClick: () => {
+          const name = $('#ciName').value;
+          if (!name) { showToast('Enter a name.', 'error'); return; }
+          state.items.push({ id: 'i' + Date.now(), name, category: $('#ciCat').value, unit: $('#ciUnit').value, image: null, shelfLife: parseInt($('#ciShelf').value) || 7, active: true });
+          showToast('Item created ✓');
+          closeModal();
+        } }
+      ]);
+    });
+
+    $('#btnInitialItemsContinue').addEventListener('click', () => navigate('#screen-initial-institutions'));
+    $('#btnInitialItemsBack').addEventListener('click', () => navigate('#screen-profile'));
+
+    /* ========== Initial Institutions ========== */
+    function renderInstList() {
+      const list = $('#instList');
+      list.innerHTML = state.institutions.map(inst => `
+        <div class="list-row">
+          <div class="main">
+            <div class="value">${inst.name}</div>
+            <div class="sub">${inst.contact} · ${inst.phone}</div>
+          </div>
+          <span class="badge badge-green">${inst.tenders.length} tender${inst.tenders.length > 1 ? 's' : ''}</span>
+        </div>
+      `).join('');
+    }
+    renderInstList();
+
+    $('#btnAddInst').addEventListener('click', () => {
+      openModal('Add Institution', `
+        <div class="field">
+          <label>Institution Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="iiName" placeholder="e.g. Hotel Taj" />
+        </div>
+        <div class="field">
+          <label>Contact Person</label>
+          <input type="text" id="iiContact" placeholder="e.g. Mr. Sharma" />
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="iiPhone" placeholder="e.g. 9876543210" />
+        </div>
+        <div class="field">
+          <label>Address / Location</label>
+          <input type="text" id="iiAddr" placeholder="e.g. Market Yard, APMC" />
+        </div>
+        <div class="field mt-4">
+          <label>Tender / Contract Name</label>
+          <input type="text" id="iiTName" placeholder="e.g. Winter Supply 2026" />
+        </div>
+        <div class="field">
+          <label>Tender Number</label>
+          <input type="text" id="iiTNum" placeholder="e.g. TND-2026-001" />
+        </div>
+        <div class="row wrap" style="gap: var(--space-3);">
+          <div style="flex:1;">
+            <div class="field" style="margin-bottom:0;">
+              <label>Start Date</label>
+              <input type="date" id="iiTStart" value="2026-10-01" />
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="field" style="margin-bottom:0;">
+              <label>End Date</label>
+              <input type="date" id="iiTEnd" value="2026-10-31" />
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Payment Terms</label>
+          <input type="text" id="iiPTerms" value="Paid after tender period ends" />
+        </div>
+        <div class="field">
+          <label>Overdue Alert Days</label>
+          <input type="number" id="iiOAD" value="7" min="0" />
+        </div>
+      `, [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Save', cls: 'btn-primary', onClick: () => {
+          const name = $('#iiName').value;
+          if (!name) { showToast('Enter institution name.', 'error'); return; }
+          const tender = {
+            id: 't' + Date.now(), name: $('#iiTName').value || 'Tender 1', number: $('#iiTNum').value || '',
+            start: $('#iiTStart').value, end: $('#iiTEnd').value,
+            paymentTerms: $('#iiPTerms').value, overdueAlertDays: parseInt($('#iiOAD').value) || 7, demandedQty: {}
+          };
+          state.institutions.push({
+            id: 'inst' + Date.now(), name, contact: $('#iiContact').value, phone: $('#iiPhone').value,
+            address: $('#iiAddr').value, location: $('#iiAddr').value, tenders: [tender], fixedPrices: {}, active: true
+          });
+          renderInstList();
+          showToast('Institution Created ✓');
+          closeModal();
+        } }
+      ]);
+    });
+
+    $('#btnInitialInstContinue').addEventListener('click', () => navigate('#screen-setup-complete'));
+    $('#btnInitialInstBack').addEventListener('click', () => navigate('#screen-initial-items'));
+
+    /* ========== Setup Complete ========== */
+    $('#btnSetupToHome').addEventListener('click', () => navigate('#screen-home'));
+
+    /* ========== Modal System ========== */
+    function openModal(title, html, actions) {
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-head">
+            <div style="font-weight:700;">${title}</div>
+            <button class="overlay-close" aria-label="Close">✕</button>
+          </div>
+          <div class="modal-body">${html}</div>
+          <div class="modal-foot">
+            ${actions.map(a => `<button class="btn ${a.cls}">${a.label}</button>`).join('')}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('open'));
+      overlay.querySelector('.overlay-close').onclick = () => closeModal(overlay);
+      actions.forEach((a, i) => {
+        overlay.querySelectorAll('.btn')[i].onclick = (e) => { e.stopPropagation(); a.onClick(); closeModal(overlay); };
+      });
+      overlay.onclick = (e) => { if (e.target === overlay) closeModal(overlay); };
+      return overlay;
+    }
+    function closeModal(overlay) {
+      if (!overlay) overlay = document.querySelector('.overlay');
+      if (overlay) {
+        overlay.classList.remove('open');
+        setTimeout(() => overlay.remove(), 300);
+      }
+    }
+
+    /* ========== S13 Allocation ========== */
+    function renderAllocation() {
+      const cartItems = state.cart.items.length > 0 ? state.cart.items : state.transactions[0].items;
+      const insts = state.institutions.filter(i => i.active);
+      const list = $('#allocList');
+      const item = state.items.find(i => i.id === (state.selectedItemId || cartItems[0]?.itemId));
+      $('#allocItemName').textContent = item ? item.name : 'Item';
+      $('#allocItemQty').textContent = 'Total quantity: ' + formatQty(cartItems.reduce((s,c)=>s+c.qty,0)) + ' ' + (item ? item.unit : '');
+
+      let html = '';
+      cartItems.forEach((ci, ciIdx) => {
+        const it = state.items.find(i => i.id === ci.itemId);
+        const instAllocs = state.transactions[0]?.allocations.filter(a => a.itemId === ci.itemId) || [];
+        html += `<div class="card" style="margin-bottom: var(--space-4);"><div style="padding: var(--space-4); border-bottom: 1px solid var(--border-soft);"><div class="value">${it ? it.name : 'Item'}</div><div class="sub">${formatQty(ci.qty)} ${it ? it.unit : ''} · purchase ₹${formatINR(ci.rate)}/kg</div></div><div style="padding: var(--space-4);">`;
+        insts.forEach(inst => {
+          const tender = inst.tenders[0];
+          const priceEntry = inst.fixedPrices[tender?.id]?.find(p => p.itemId === ci.itemId);
+          const alloc = instAllocs.find(a => a.instId === inst.id);
+          const rate = priceEntry ? priceEntry.rate : 0;
+          const allocQty = alloc ? alloc.qty : 0;
+          const allocPct = ci.qty > 0 ? (allocQty / ci.qty * 100) : 0;
+          const revenue = allocQty * rate;
+          html += `
+            <div class="list-row" style="padding: var(--space-3) 0;">
+              <div class="main" style="flex:1;">
+                <div class="value">${inst.name}</div>
+                <div class="sub">${tender ? tender.name : 'No tender'} · ₹${formatINR(rate)}/kg${priceEntry ? ' — Fixed Tender Rate' : ''}</div>
+              </div>
+              <div style="display:flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+                <input type="text" class="allocQty" data-ci="${ciIdx}" data-inst="${inst.id}" value="${allocQty}" style="width: 70px; padding: 4px 8px; font-size: var(--text-sm);" />
+                <span style="font-size: var(--text-xs); color: var(--muted);">= ${allocPct.toFixed(1)}%</span>
+                <span style="font-size: var(--text-sm); font-weight: 700; color: var(--fg);">₹${formatINR(revenue)}</span>
+                ${!priceEntry ? `<span style="font-size: var(--text-xs); color: var(--danger);">No price</span>` : ''}
+              </div>
+            </div>
+            <div class="progress" style="margin-top: var(--space-1);"><div class="progress-bar" style="width: ${Math.min(allocPct,100)}%"></div></div>
+          `;
+        });
+        html += `</div></div>`;
+      });
+      list.innerHTML = html;
+
+      const totalQty = cartItems.reduce((s,c)=>s+c.qty,0);
+      const totalAlloc = (state.transactions[0]?.allocations.reduce((s,a)=>s+a.qty,0) || 0);
+      const remaining = totalQty - totalAlloc;
+      $('#allocRemaining').classList.toggle('hidden', remaining <= 0);
+      $('#allocRemainingText').textContent = remaining + ' ' + (item ? item.unit : '') + ' not yet allocated';
+
+      $('#btnAllocNext').disabled = remaining > 0;
+    }
+    document.addEventListener('input', (e) => {
+      if (e.target.classList.contains('allocQty')) showToast('Allocation updated — revenue recalculated.');
+    });
+    $('#btnAllocBack').addEventListener('click', () => navigate('#screen-cart'));
+    $('#btnAllocNext').addEventListener('click', () => { navigate('#screen-expenses'); renderExpenses(); });
+    $('#btnAllocRemainingInv').addEventListener('click', () => {
+      openModal('Remaining Quantity', 'Move remaining to inventory as a new lot?', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Add to Inventory', cls: 'btn-primary', onClick: () => { showToast('Inventory Updated ✓'); closeModal(); renderAllocation(); renderHome(); } }
+      ]);
+    });
+    $('#btnAllocRemainingLoss').addEventListener('click', () => {
+      openModal('Mark as Loss/Waste', 'Reason required.', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Mark as Loss', cls: 'btn-danger', onClick: () => { showToast('Loss recorded.'); closeModal(); renderAllocation(); } }
+      ]);
+    });
+
+    /* ========== S14 Review ========== */
+    function renderReview() {
+      const trx = state.transactions[0];
+      $('#reviewItemSummary').innerHTML = trx.items.map(it => {
+        const item = state.items.find(i => i.id === it.itemId);
+        return `<div class="list-row"><div class="main"><div class="value">${item ? item.name : 'Item'}</div><div class="sub">${formatQty(it.qty)} ${item ? item.unit : ''} · ₹${formatINR(it.rate)}/kg</div></div><div class="value">${formatINR(it.cost)}</div></div>`;
+      }).join('');
+      $('#reviewInstSummary').innerHTML = trx.allocations.map(a => {
+        const inst = state.institutions.find(i => i.id === a.instId);
+        return `<div class="list-row"><div class="main"><div class="value">${inst ? inst.name : 'Institution'}</div><div class="sub">${a.qty} @ ₹${formatINR(a.rate)} · ${a.custom ? 'Custom' : 'Fixed Tender'}</div></div><div class="value">${formatINR(a.revenue)}</div></div>`;
+      }).join('');
+      $('#reviewInvSummary').innerHTML = `<div class="list-row"><div class="main"><div class="value">Remaining → Inventory</div><div class="sub">50 kg · ₹1,500 value</div></div><span class="badge badge-green">Recoverable</span></div>`;
+      $('#reviewExpSummary').innerHTML = trx.expenses.map(e => `
+        <div class="list-row"><div class="main"><div class="value">${e.type}</div><div class="sub">${e.assignedTo === 'day' ? 'Day-level' : 'Assigned'}</div></div><div class="value">${formatINR(e.amount)}</div></div>
+      `).join('');
+      $('#reviewAnalysis').innerHTML = `
+        <div class="list-row"><div class="main"><div class="value">Vegetable-wise</div><div class="sub">Tomato +₹3,550 · Potato +₹3,650 · Onion +₹2,300</div></div><div class="value profit">+₹9,500</div></div>
+        <div class="list-row"><div class="main"><div class="value">Institution-wise</div><div class="sub">A +₹4,300 · B +₹4,300 · C +₹2,400</div></div><div class="value profit">+₹11,000</div></div>
+      `;
+      $('#revNewPurchase').textContent = formatINR(trx.newPurchaseCost);
+      $('#revInvUsed').textContent = formatINR(trx.inventoryUsedCost);
+      $('#revExpenses').textContent = formatINR(trx.expensesTotal);
+      $('#revTotalCost').textContent = formatINR(trx.totalCost);
+      $('#revRevenue').textContent = formatINR(trx.revenue);
+      $('#revProfit').textContent = (trx.profit >= 0 ? '+' : '−') + formatINR(Math.abs(trx.profit));
+      $('#revProfit').className = trx.profit >= 0 ? 'value profit' : 'value loss';
+      $('#revMargin').textContent = trx.margin + '%';
+    }
+    $('#btnReviewBack').addEventListener('click', () => navigate('#screen-expenses'));
+    $('#btnReviewConfirm').addEventListener('click', () => { navigate('#screen-confirm'); renderConfirm(); });
+
+    /* ========== S15 Confirm ========== */
+    function renderConfirm() {
+      const trx = state.transactions[0];
+      $('#confInvestment').textContent = formatINR(trx.totalCost);
+      $('#confRevenue').textContent = formatINR(trx.revenue);
+      $('#confProfit').textContent = (trx.profit >= 0 ? '+' : '−') + formatINR(Math.abs(trx.profit));
+      $('#confProfit').className = trx.profit >= 0 ? 'value profit' : 'value loss';
+    }
+    $('#btnConfEditCart').addEventListener('click', () => navigate('#screen-cart'));
+    $('#btnConfConfirm').addEventListener('click', () => {
+      openModal('Confirm & Complete', 'Confirm the entire daily cart once? One confirmation only.', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Confirm & Complete', cls: 'btn-primary', onClick: () => { state.cart.confirmed = true; closeModal(); navigate('#screen-completed'); renderCompleted(); showToast('Cart Completed ✓'); } }
+      ]);
+    });
+
+    /* ========== S16 Completed ========== */
+    function renderCompleted() {
+      const trx = state.transactions[0];
+      $('#compDate').textContent = trx.date + ' · ' + trx.revision;
+    }
+    $('#btnCompDetails').addEventListener('click', () => { navigate('#screen-trx-detail'); renderTrxDetail(); });
+    $('#btnCompHistory').addEventListener('click', () => navigate('#screen-history'));
+    $('#btnCompHome').addEventListener('click', () => { navigate('#screen-home'); renderHome(); });
+
+    /* ========== S17-S22 Institutions ========== */
+    function renderInstListView() {
+      const q = $('#instSearch').value.toLowerCase();
+      $('#instListView').innerHTML = state.institutions.filter(inst => inst.name.toLowerCase().includes(q)).map(inst => `
+        <div class="list-row" onclick="app.openInst('${inst.id}')" style="cursor:pointer;">
+          <div class="main"><div class="value">${inst.name}</div><div class="sub">${inst.contact} · ${inst.phone}</div></div><span class="badge badge-green">${inst.tenders.length} tender</span>
+        </div>
+      `).join('');
+    }
+    window.app.openInst = (id) => { state.selectedInstId = id; navigate('#screen-inst-profile'); renderInstProfile(); };
+    $('#instSearch').addEventListener('input', renderInstListView);
+    $('#btnInstListBack').addEventListener('click', () => navigate('#screen-home'));
+    $('#btnInstListAdd').addEventListener('click', () => {
+      state.editingInst = null; navigate('#screen-inst-edit');
+      $('#instEditTitle').textContent = 'Create Institution'; $('#formInstEdit').reset(); $('#ieTenders').innerHTML = '';
+    });
+    renderInstListView();
+
+    function renderInstProfile() {
+      const inst = state.institutions.find(i => i.id === state.selectedInstId);
+      if (!inst) return;
+      $('#profName').textContent = inst.name;
+      $('#profSub').textContent = inst.contact + ' · ' + inst.phone;
+      $('#profTenders').innerHTML = inst.tenders.map(t => `
+        <div class="list-row"><div class="main"><div class="value">${t.name}</div><div class="sub">${t.start} → ${t.end}</div></div><span class="badge badge-${t.end < '2026-10-31' ? 'red' : 'green'}">${t.end < '2026-10-31' ? 'Ended' : 'Active'}</span></div>
+      `).join('');
+      const tp = inst.fixedPrices[inst.tenders[0]?.id] || [];
+      $('#profPriceSummary').innerHTML = `
+        <div class="list-row"><div class="main"><div class="value">Tomato</div><div class="sub">₹${tp.find(p=>p.itemId==='i1')?.rate || '—'}/kg</div></div></div>
+        <div class="list-row"><div class="main"><div class="value">Potato</div><div class="sub">₹${tp.find(p=>p.itemId==='i2')?.rate || '—'}/kg</div></div></div>
+        <div class="list-row"><div class="main"><div class="value">Onion</div><div class="sub">₹${tp.find(p=>p.itemId==='i3')?.rate || '—'}/kg</div></div></div>
+      `;
+    }
+    $('#btnProfBack').addEventListener('click', () => navigate('#screen-inst-list'));
+    $('#btnProfEdit').addEventListener('click', () => {
+      state.editingInst = state.selectedInstId;
+      const inst = state.institutions.find(i => i.id === state.selectedInstId);
+      navigate('#screen-inst-edit'); $('#instEditTitle').textContent = 'Edit Institution';
+      $('#ieName').value = inst.name; $('#ieContact').value = inst.contact; $('#iePhone').value = inst.phone; $('#ieAddr').value = inst.address;
+    });
+    $('#btnInstEditSave').addEventListener('click', (e) => {
+      e.preventDefault();
+      const id = state.editingInst || 'inst' + Date.now();
+      const inst = state.institutions.find(i => i.id === id) || {};
+      inst.name = $('#ieName').value; inst.contact = $('#ieContact').value; inst.phone = $('#iePhone').value; inst.address = $('#ieAddr').value; inst.location = $('#ieAddr').value;
+      if (!state.editingInst) { inst.id = id; inst.tenders = []; inst.fixedPrices = {}; inst.active = true; state.institutions.push(inst); }
+      showToast('Institution Saved ✓'); renderInstListView(); navigate('#screen-inst-list');
+    });
+    $('#btnInstEditBack').addEventListener('click', () => navigate('#screen-inst-list'));
+    $('#ieAddTender').addEventListener('click', () => showToast('Tender added (demo).'));
+    $('#profAddTender').addEventListener('click', () => showToast('Add tender (demo).'));
+    $('#profPrices').addEventListener('click', () => { navigate('#screen-tender-prices'); renderTenderPrices(); });
+
+    function renderTenderMgmt() {
+      const inst = state.institutions.find(i => i.id === state.selectedInstId);
+      $('#tmgmtTitle').textContent = inst ? inst.name + ' · Tenders' : 'Tender Management';
+      $('#tmgmtList').innerHTML = (inst?.tenders || []).map(t => `
+        <div class="list-row"><div class="main"><div class="value">${t.name}</div><div class="sub">${t.number} · ${t.start} → ${t.end}</div></div><span class="badge badge-blue">${t.paymentTerms}</span></div>
+      `).join('');
+    }
+    $('#btnTmgmtBack').addEventListener('click', () => navigate('#screen-inst-profile'));
+    $('#btnTmgmtAdd').addEventListener('click', () => showToast('Tender added (demo).'));
+
+    function renderTenderPrices() {
+      const inst = state.institutions.find(i => i.id === state.selectedInstId);
+      const tenderId = inst?.tenders[0]?.id;
+      const prices = inst?.fixedPrices[tenderId] || [];
+      $('#tpTitle').textContent = inst ? inst.name + ' · Prices' : 'Fixed Tender Prices';
+      $('#tpSub').textContent = 'Per-item rates for this tender.';
+      $('#tpList').innerHTML = prices.map(p => {
+        const item = state.items.find(i => i.id === p.itemId);
+        return `<div class="list-row"><div class="main"><div class="value">${item ? item.name : 'Item'}</div><div class="sub">${item ? item.unit : ''}</div></div><div class="value">₹${formatINR(p.rate)}/kg</div></div>`;
+      }).join('');
+    }
+    $('#btnTPBack').addEventListener('click', () => navigate('#screen-inst-profile'));
+    $('#btnTPAdd').addEventListener('click', () => {
+      openModal('Add Item Price', 'Item · Unit · Fixed Tender Rate', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Add Price', cls: 'btn-primary', onClick: () => { showToast('Tender Price Updated ✓'); closeModal(); renderTenderPrices(); } }
+      ]);
+    });
+
+    function renderReceivables() {
+      $('#rcvList').innerHTML = `<div class="card"><div style="padding: var(--space-5);"><div class="list-row"><div class="main"><div class="value">Oct Period — Institution A</div><div class="sub">Tender 1 · 1–31 Oct 2026</div></div><span class="badge badge-blue">Bill Issued</span></div><div class="list-row"><div class="main"><div class="value">Billed − Deductions − Received</div><div class="sub">₹21,050 − ₹500 − ₹15,000</div></div><div class="value">₹5,550 pending</div></div><div class="list-row"><div class="main"><div class="value">Aging</div><div class="sub">45 days since bill</div></div><span class="text-sm" style="color:var(--warn)">Overdue</span></div></div></div>`;
+    }
+    $('#btnRcvBack').addEventListener('click', () => navigate('#screen-inst-profile'));
+    $('#profRecordPay').addEventListener('click', () => {
+      openModal('Record Payment', 'Amount received + deduction lines', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Record', cls: 'btn-primary', onClick: () => { showToast('Payment Recorded ✓'); closeModal(); renderReceivables(); renderHome(); } }
+      ]);
+    });
+    $('#profPrepareBill').addEventListener('click', () => {
+      openModal('Prepare Period Bill', 'Supply − Deductions = Net to collect', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Issue Bill', cls: 'btn-primary', onClick: () => { showToast('Bill Issued ✓'); closeModal(); renderReceivables(); } }
+      ]);
+    });
+
+    function renderDues() {
+      $('#duesList').innerHTML = state.institutions.map(inst => `
+        <div class="list-row" onclick="app.openInst('${inst.id}')" style="cursor:pointer;"><div class="main"><div class="value">${inst.name}</div><div class="sub">Accrued · Oldest: Oct 2026</div></div><div class="value loss">₹5,550</div></div>
+      `).join('');
+    }
+    $('#btnDuesBack').addEventListener('click', () => navigate('#screen-home'));
+
+    /* ========== S24 Inventory ========== */
+    function renderInventory() {
+      const lots = state.inventory;
+      $('#invList').innerHTML = lots.map(lot => {
+        const item = state.items.find(i => i.id === lot.itemId);
+        return `<div class="list-row" onclick="app.openInvLot('${lot.id}')" style="cursor:pointer;"><div class="main"><div class="value">${item ? item.name : 'Item'}</div><div class="sub">${lot.source} · ${lot.status}</div></div><div class="value">${formatQty(lot.qty)} ${item ? item.unit : ''}</div></div>`;
+      }).join('');
+      $('#invTotalQty').textContent = formatQty(lots.reduce((s,l)=>s+l.qty,0)) + ' kg';
+      $('#invTotalValue').textContent = formatINR(lots.reduce((s,l)=>s+(l.qty*l.originalRate),0));
+      $('#invItemCount').textContent = lots.length;
+      $('#invAttention').textContent = '1';
+    }
+    window.app.openInvLot = (id) => { state.selectedLotId = id; navigate('#screen-inv-detail'); renderInvDetail(); };
+    $('#invFiltAll').classList.add('btn-primary');
+    $('#btnInvBack').addEventListener('click', () => navigate('#screen-home'));
+    $('#btnInvAddStock').addEventListener('click', () => {
+      openModal('Add Stock Manually', 'Item · Quantity · Original Rate · Source · Date', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Add to Inventory', cls: 'btn-primary', onClick: () => { showToast('Inventory Updated ✓'); closeModal(); renderInventory(); renderHome(); } }
+      ]);
+    });
+    renderInventory();
+
+    function renderInvDetail() {
+      const lot = state.inventory.find(l => l.id === state.selectedLotId);
+      if (!lot) return;
+      const item = state.items.find(i => i.id === lot.itemId);
+      $('#invDetName').textContent = item ? item.name : 'Item';
+      $('#invDetMeta').textContent = 'Lot · Available ' + formatQty(lot.qty) + ' ' + (item ? item.unit : '') + ' · Original Cost ₹' + lot.originalRate + '/' + (item ? item.unit : '');
+      $('#invDetAvail').textContent = formatQty(lot.qty) + ' ' + (item ? item.unit : '');
+      $('#invDetCost').textContent = '₹' + lot.originalRate + '/' + (item ? item.unit : '');
+      $('#invDetValue').textContent = formatINR(lot.qty * lot.originalRate);
+      $('#invDetSource').textContent = lot.source;
+      $('#invDetAge').textContent = '1 day';
+      $('#invDetStatus').textContent = lot.status;
+      $('#invDetStatus').className = 'value badge badge-' + (lot.status === 'Available' ? 'green' : lot.status === 'Waste/Loss' ? 'red' : 'gray');
+      $('#invDetHistory').innerHTML = (lot.movements || []).map(m => `<div class="list-row"><div class="main"><div class="value">${m.qty > 0 ? '+' : '−'}${Math.abs(m.qty)} kg</div><div class="sub">${m.source}</div></div><div class="value">${m.date}</div></div>`).join('') || '<div class="text-muted text-sm">No movements yet.</div>';
+    }
+    $('#btnInvDetBack').addEventListener('click', () => navigate('#screen-inventory'));
+    $('#btnInvDetUse').addEventListener('click', () => showToast('Use in Supply → BS-05 flow.'));
+    $('#btnInvDetSell').addEventListener('click', () => showToast('Sell Inventory → BS-06 flow.'));
+    $('#btnInvDetWaste').addEventListener('click', () => {
+      openModal('Mark Waste', 'Reason required — loss preview shown.', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Mark as Waste', cls: 'btn-danger', onClick: () => { showToast('Waste recorded.'); closeModal(); renderInvDetail(); } }
+      ]);
+    });
+
+    /* ========== S26 Expenses ========== */
+    function renderExpenses() {
+      const trx = state.transactions[0];
+      $('#expList').innerHTML = trx.expenses.map((e, idx) => `<div class="list-row"><div class="main"><div class="value">${e.type}</div><div class="sub">${e.note || 'No note'} · ${e.assignedTo === 'day' ? 'Day-level' : 'Assigned'}</div></div><div class="value">${formatINR(e.amount)}</div></div>`).join('');
+    }
+    $('#btnExpBack').addEventListener('click', () => navigate('#screen-allocate'));
+    $('#btnExpAdd').addEventListener('click', () => {
+      openModal('Add Expense', 'Type · Amount · Note · Assignment', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Add Expense', cls: 'btn-primary', onClick: () => { showToast('Expense added.'); closeModal(); renderExpenses(); renderHome(); } }
+      ]);
+    });
+
+    /* ========== S27 Payables ========== */
+    function renderPayables() {
+      $('#payList').innerHTML = `<div class="list-row"><div class="main"><div class="value">Mandi Seller — Tomato (20 Oct)</div><div class="sub">On-credit · Due 27 Oct</div></div><div class="value loss">₹15,000 owed</div></div>`;
+    }
+    $('#btnPayBack').addEventListener('click', () => navigate('#screen-home'));
+    renderPayables();
+
+    /* ========== S28 History ========== */
+    function renderHistory() {
+      $('#histList').innerHTML = `
+        <div class="card" style="cursor:pointer;" onclick="app.openTrx('TRX-20261020')"><div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);"><div class="row between"><div class="value">20 Oct 2026</div><div class="value profit">+₹6,500</div></div><div class="sub mt-1">Investment ₹34,000 · Revenue ₹43,500 · Expenses ₹3,000</div></div></div>
+        <div class="list-row"><div class="main"><div class="value">22 Oct 2026</div><div class="sub">Sale · 30 kg Tomato</div></div><div class="value loss">−₹60</div></div>
+        <div class="list-row"><div class="main"><div class="value">23 Oct 2026</div><div class="sub">Waste · 15 kg Onion</div></div><div class="value loss">−₹450</div></div>
+        <div class="list-row"><div class="main"><div class="value">24 Oct 2026</div><div class="sub">Settlement · Mandi Seller</div></div><div class="value">₹0 P&L</div></div>
+      `;
+    }
+    window.app.openTrx = (id) => { navigate('#screen-trx-detail'); renderTrxDetail(); };
+    $('#histFiltToday').classList.add('btn-primary');
+    $('#btnHistBack').addEventListener('click', () => navigate('#screen-home'));
+    renderHistory();
+
+    /* ========== S29 Trx Detail ========== */
+    function renderTrxDetail() {
+      const trx = state.transactions[0];
+      $('#trxTitle').textContent = trx.id;
+      $('#trxSub').textContent = 'Frozen snapshot — ' + trx.date + ' · ' + trx.revision;
+      $('#trxTabs').innerHTML = `<button class="btn btn-secondary">Items</button><button class="btn btn-secondary">Institutions</button><button class="btn btn-secondary">Inventory</button><button class="btn btn-secondary">Expenses</button><button class="btn btn-secondary">P&L</button>`;
+      $('#trxContent').innerHTML = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Items (frozen rates)</p>${trx.items.map(it => { const item = state.items.find(i => i.id === it.itemId); return `<div class="list-row"><div class="main"><div class="value">${item ? item.name : 'Item'}</div><div class="sub">${formatQty(it.qty)} ${item ? item.unit : ''} · ₹${formatINR(it.rate)}/kg · ${it.payment}</div></div><div class="value">${formatINR(it.cost)}</div></div>`; }).join('')}<p class="eyebrow mt-4">Result</p><div class="list-row"><div class="main"><div class="value">Profit</div><div class="sub">${trx.profit >= 0 ? 'Profit' : 'Loss'}</div></div><div class="value ${trx.profit>=0?'profit':'loss'}">${trx.profit >= 0 ? '+' : '−'}₹${Math.abs(trx.profit)}</div></div></div></div>`;
+    }
+    $('#btnTrxBack').addEventListener('click', () => navigate('#screen-history'));
+    $('#btnTrxReopen').addEventListener('click', () => {
+      openModal('Correction Mode', 'Editing TRX 20-Oct (R2) — all changes stay date-stamped.', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Re-open', cls: 'btn-primary', onClick: () => { showToast('Correction Mode opened.'); closeModal(); } }
+      ]);
+    });
+    $('#btnTrxMemo').addEventListener('click', () => {
+      openModal('Memo / Bill', 'Generate on demand — Shared ✓ marker.', [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+        { label: 'Generate Memo', cls: 'btn-primary', onClick: () => { showToast('Memo generated — Shared ✓'); closeModal(); } }
+      ]);
+    });
+
+    /* ========== S30 Other Day Entries ========== */
+    function renderOE() {
+      $('#oeContent').innerHTML = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Sale — 22 Oct 2026</p><div class="list-row"><div class="main"><div class="value">30 kg Tomato @ ₹28</div><div class="sub">Revenue ₹840 · Cost ₹900</div></div><div class="value loss">−₹60</div></div></div></div><div class="card mt-4"><div style="padding: var(--space-5);"><p class="eyebrow">Waste — 23 Oct 2026</p><div class="list-row"><div class="main"><div class="value">15 kg Onion — Spoiled</div><div class="sub">Loss ₹450</div></div><div class="value loss">−₹450</div></div></div></div><div class="card mt-4"><div style="padding: var(--space-5);"><p class="eyebrow">Settlement — 24 Oct 2026</p><div class="list-row"><div class="main"><div class="value">Mandi Seller — ₹15,000</div><div class="sub">Cash-out only · ₹0 in P&L</div></div><div class="value">₹0</div></div></div></div>`;
+    }
+    $('#btnOEBack').addEventListener('click', () => navigate('#screen-history'));
+    renderOE();
+
+    /* ========== S31 P&L ========== */
+    function renderPL() {
+      $('#plContent').innerHTML = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Institution-wise</p><div class="list-row"><div class="main"><div class="value">Institution A</div><div class="sub">Supply · Revenue · Cost · Profit</div></div><div class="value profit">+₹4,300</div></div><div class="list-row"><div class="main"><div class="value">Institution B</div><div class="sub">Supply · Revenue · Cost · Profit</div></div><div class="value profit">+₹4,300</div></div><div class="list-row"><div class="main"><div class="value">Institution C</div><div class="sub">Supply · Revenue · Cost · Profit</div></div><div class="value profit">+₹2,400</div></div></div></div><div class="card mt-6"><div style="padding: var(--space-5);"><p class="eyebrow">Vegetable-wise</p><div class="list-row"><div class="main"><div class="value">Tomato</div><div class="sub">500 kg · ₹15,000 → ₹18,550</div></div><div class="value profit">+₹3,550</div></div><div class="list-row"><div class="main"><div class="value">Potato</div><div class="sub">400 kg · ₹10,000 → ₹13,650</div></div><div class="value profit">+₹3,650</div></div><div class="list-row"><div class="main"><div class="value">Onion</div><div class="sub">300 kg · ₹9,000 → ₹11,300</div></div><div class="value profit">+₹2,300</div></div></div></div><div class="card mt-6"><div style="padding: var(--space-5);"><p class="eyebrow">Contract-wise (Tender)</p><div class="list-row"><div class="main"><div class="value">A · Tender 1 · Oct</div><div class="sub">Supply ₹21,050 → Effective ₹20,550</div></div><div class="value profit">Contract P/L</div></div></div></div>`;
+    }
+    $('#plTabInst').classList.add('btn-primary');
+    $('#btnPLBack').addEventListener('click', () => navigate('#screen-home'));
+    renderPL();
+
+    /* ========== S32 Reports ========== */
+    function renderReports() {
+      const types = ['Daily','Weekly','Monthly','Institution','Contract (Tender)','Vegetable','Inventory','Expense','P/L','Payment Dues','Cash-vs-Accrued','Payables','Spoilage by Item','Custom Date Range'];
+      $('#rptList').innerHTML = types.map(t => `<div class="list-row" onclick="app.openReport('${t}')" style="cursor:pointer;"><div class="main"><div class="value">${t}</div><div class="sub">Structured summary · Export PDF/CSV</div></div><span class="badge badge-gray">Open</span></div>`).join('');
+    }
+    window.app.openReport = (t) => { $('#rptDetTitle').textContent = t + ' Report'; $('#rptDetSub').textContent = 'Structured summary — English · ₹ grouped'; navigate('#screen-report-detail'); renderReportDetail(t); };
+    $('#btnRptBack').addEventListener('click', () => navigate('#screen-home'));
+    $('#btnRptDetExport').addEventListener('click', () => { openModal('Export Report', 'Share · Print · PDF · CSV', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Export', cls: 'btn-primary', onClick: () => { showToast('Report exported.'); closeModal(); } }
+    ]); });
+    $('#btnRptDetBack').addEventListener('click', () => navigate('#screen-reports'));
+    function renderReportDetail(t) { $('#rptDetContent').innerHTML = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">${t}</p><div class="text-muted text-sm">Report content for ${t} — structured summary generated from transaction data.</div></div></div>`; }
+    renderReports();
+
+    /* ========== S34-S41 Settings ========== */
+    function renderSettings() {
+      $('#settingsList').innerHTML = `<div class="list-row" onclick="navigate('#screen-inst-list')" style="cursor:pointer;"><div class="main"><div class="value">Institutions</div><div class="sub">Manage profiles, tender prices</div></div><span class="badge badge-gray">→</span></div><div class="list-row" onclick="navigate('#screen-item-mgmt')" style="cursor:pointer;"><div class="main"><div class="value">Item Management</div><div class="sub">Add/edit items, images, shelf-life</div></div><span class="badge badge-gray">→</span></div><div class="list-row" onclick="navigate('#screen-business')" style="cursor:pointer;"><div class="main"><div class="value">Business</div><div class="sub">Name, currency ₹, default unit</div></div><span class="badge badge-gray">→</span></div><div class="list-row" onclick="navigate('#screen-app-settings')" style="cursor:pointer;"><div class="main"><div class="value">App</div><div class="sub">Alert thresholds, categories, reasons</div></div><span class="badge badge-gray">→</span></div><div class="list-row" onclick="navigate('#screen-data')" style="cursor:pointer;"><div class="main"><div class="value">Data Management</div><div class="sub">Backup, restore, export, import</div></div><span class="badge badge-gray">→</span></div><div class="list-row" onclick="navigate('#screen-about')" style="cursor:pointer;"><div class="main"><div class="value">About</div><div class="sub">App info, version</div></div><span class="badge badge-gray">→</span></div>`;
+    }
+    $('#btnItemMgmtBack').addEventListener('click', () => navigate('#screen-settings'));
+    $('#btnItemMgmtAdd').addEventListener('click', () => navigate('#screen-add-item'));
+    $('#btnBizBack').addEventListener('click', () => navigate('#screen-settings'));
+    $('#btnBizSave').addEventListener('click', (e) => { e.preventDefault(); showToast('Business Settings Saved ✓'); });
+    $('#btnAppBack').addEventListener('click', () => navigate('#screen-settings'));
+    $('#btnAppSave').addEventListener('click', (e) => { e.preventDefault(); showToast('App Settings Saved ✓'); });
+    $('#appEditCategories').addEventListener('click', () => { navigate('#screen-categories'); renderCategories(); });
+    $('#appEditReasons').addEventListener('click', () => { navigate('#screen-reasons'); renderReasonsList(); });
+    $('#btnCatBack').addEventListener('click', () => navigate('#screen-app-settings'));
+    $('#btnCatAdd').addEventListener('click', () => { showToast('Category added.'); renderCategories(); });
+    $('#btnReasonBack').addEventListener('click', () => navigate('#screen-app-settings'));
+    $('#btnReasonAdd').addEventListener('click', () => { showToast('Reason added.'); renderReasonsList(); });
+    $('#btnDataBack').addEventListener('click', () => navigate('#screen-settings'));
+    $('#dataBackup').addEventListener('click', () => { openModal('Backup', 'Confirm → version-tagged file.', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Backup', cls: 'btn-primary', onClick: () => { showToast('Backup complete ✓'); closeModal(); } }
+    ]); });
+    $('#dataRestore').addEventListener('click', () => { openModal('Restore', 'Validate version before confirming.', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Restore', cls: 'btn-danger', onClick: () => { showToast('Restored.'); closeModal(); } }
+    ]); });
+    $('#dataExport').addEventListener('click', () => { openModal('Export Data', 'CSV/JSON — mirrors §2.11 ledger.', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Export', cls: 'btn-primary', onClick: () => { showToast('Exported.'); closeModal(); } }
+    ]); });
+    $('#dataImport').addEventListener('click', () => { openModal('Import Data', 'Validation + confirm.', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Import', cls: 'btn-primary', onClick: () => { showToast('Imported.'); closeModal(); } }
+    ]); });
+    $('#dataDeleteAll').addEventListener('click', () => { openModal('Delete All Data', 'Permanent loss — type "DELETE" to confirm.', [
+      { label: 'Cancel', cls: 'btn-secondary', onClick: closeModal },
+      { label: 'Delete All', cls: 'btn-danger', onClick: () => { showToast('All data deleted.'); closeModal(); } }
+    ]); });
+    renderSettings();
+
+    function renderCategories() { $('#catList').innerHTML = state.settings.expenseCategories.map(c => `<div class="list-row"><div class="main"><div class="value">${c}</div><div class="sub">Expense type</div></div></div>`).join(''); }
+    function renderReasonsList() { $('#reasonList').innerHTML = state.settings.reasons.map(r => `<div class="list-row"><div class="main"><div class="value">${r}</div><div class="sub">Reason (deduction / waste / rejection)</div></div></div>`).join(''); }
+
+    /* ========== S42 Attention Center ========== */
+    function renderAttention() {
+      $('#attnList').innerHTML = `<div class="list-row"><div class="main"><div class="value">Old Stock Alert</div><div class="sub">Tomato lot age exceeds shelf-life (3 days)</div></div><span class="badge badge-warn">Act</span></div><div class="list-row"><div class="main"><div class="value">Payment Due Alert</div><div class="sub">Institution A — Oct bill pending ₹5,550 (45 days)</div></div><span class="badge badge-danger">Due</span></div><div class="list-row"><div class="main"><div class="value">Backup Due</div><div class="sub">No backup in 7 days</div></div><span class="badge badge-meta">Reminder</span></div><div class="list-row"><div class="main"><div class="value">Rejected Stock Alert</div><div class="sub">Rejected qty awaiting inventory/waste decision</div></div><span class="badge badge-warn">Decide</span></div><div class="list-row"><div class="main"><div class="value">Seller Payable Due</div><div class="sub">Mandi seller — due date approaching</div></div><span class="badge badge-danger">Pay</span></div>`;
+    }
+    $('#btnAttnBack').addEventListener('click', () => navigate('#screen-home'));
+    $('#btnHomeAttn').addEventListener('click', () => { navigate('#screen-attention'); renderAttention(); });
+    renderAttention();
+
+    /* ========== S-MORE HUB ========== */
+    $('#btnMore').addEventListener('click', () => navigate('#screen-more'));
+    $('#qaInstitutions').addEventListener('click', () => navigate('#screen-inst-list'));
+    const backMap = $('#btnBack').onclick ? null : null;
+    // Extend back map
+    const origBack = $('#btnBack').onclick;
+    $('#btnBack').onclick = () => {
+      const extMap = {
+        '#screen-inst-list': '#screen-home',
+        '#screen-inst-edit': '#screen-inst-list',
+        '#screen-inst-profile': '#screen-inst-list',
+        '#screen-tender-mgmt': '#screen-inst-profile',
+        '#screen-tender-prices': '#screen-inst-profile',
+        '#screen-receivables': '#screen-inst-profile',
+        '#screen-dues': '#screen-home',
+        '#screen-inventory': '#screen-home',
+        '#screen-inv-detail': '#screen-inventory',
+        '#screen-expenses': '#screen-allocate',
+        '#screen-payables': '#screen-home',
+        '#screen-history': '#screen-home',
+        '#screen-trx-detail': '#screen-history',
+        '#screen-other-entries': '#screen-history',
+        '#screen-pl': '#screen-home',
+        '#screen-reports': '#screen-home',
+        '#screen-report-detail': '#screen-reports',
+        '#screen-settings': '#screen-home',
+        '#screen-item-mgmt': '#screen-settings',
+        '#screen-business': '#screen-settings',
+        '#screen-app-settings': '#screen-settings',
+        '#screen-categories': '#screen-app-settings',
+        '#screen-reasons': '#screen-app-settings',
+        '#screen-data': '#screen-settings',
+        '#screen-about': '#screen-settings',
+        '#screen-attention': '#screen-home',
+        '#screen-allocate': '#screen-cart',
+        '#screen-review': '#screen-expenses',
+        '#screen-confirm': '#screen-review',
+        '#screen-completed': '#screen-home',
+        '#screen-add-item': '#screen-veg'
+      };
+      const target = extMap[`#screen-${state.currentScreen}`];
+      if (target) navigate(target);
+    };
+
+    /* ========== Expose for later modules ========== */
+    window.app = { state, navigate, showToast, formatINR, formatQty, openModal, closeModal, goHome, updateCartIndicator, $, $$, renderHome, renderItemList, renderCart, renderAllocation, renderReview, renderInstListView, renderInventory, renderHistory, renderReceivables, renderDues, renderPL, renderReports, renderAttention };
+  </script>
+</body>
+</html>
