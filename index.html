@@ -1466,6 +1466,112 @@
       font-size: var(--text-xs);
     }
 
+    /* ========== What's New — in-app update message ========== */
+    .update-card {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(79, 140, 255, 0.09), rgba(79, 140, 255, 0) 46%),
+        var(--surface);
+      border: 1px solid color-mix(in oklab, var(--accent), white 62%);
+    }
+    .update-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30% -70% auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(79, 140, 255, 0.22), transparent 68%);
+      pointer-events: none;
+    }
+    .update-head {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      position: relative;
+      z-index: 1;
+    }
+    .update-mark {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in oklab, var(--accent), white 82%);
+      color: var(--accent);
+      box-shadow: var(--elev-glass-lit);
+    }
+    .update-mark svg {
+      width: 22px;
+      height: 22px;
+    }
+    .update-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 760;
+      letter-spacing: var(--tracking-display);
+      line-height: var(--leading-tight);
+    }
+    .update-version {
+      font: 700 var(--text-xs) / 1 var(--font-mono);
+      color: var(--accent);
+    }
+    .update-list {
+      display: grid;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+      position: relative;
+      z-index: 1;
+    }
+    .update-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+    }
+    .update-num {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      margin-top: 2px;
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 700 var(--text-xs) / 1 var(--font-mono);
+      background: color-mix(in oklab, var(--accent), white 86%);
+      color: color-mix(in oklab, var(--accent), black 22%);
+    }
+    .update-item .t {
+      display: block;
+      font-weight: 700;
+      font-size: var(--text-sm);
+    }
+    .update-item .d {
+      display: block;
+      color: var(--muted);
+      font-size: var(--text-xs);
+      line-height: var(--leading-body);
+    }
+    .update-actions {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+      position: relative;
+      z-index: 1;
+    }
+    .update-actions .btn {
+      padding: 8px 16px;
+      font-size: var(--text-xs);
+    }
+    .update-note {
+      margin-top: var(--space-4);
+      color: var(--muted);
+      font-size: var(--text-xs);
+    }
+
     /* ========== Reduced Motion ========== */
     @media (prefers-reduced-motion: reduce) {
       *,
@@ -1734,6 +1840,11 @@
   <section class="screen" id="screen-home">
     <div class="container">
       <section>
+        <!-- What's New — in-app update message (dismissible per version) -->
+        <div id="homeUpdateCard" class="card update-card hidden" style="margin-bottom: var(--space-4);">
+          <!-- injected by renderUpdateBanner() -->
+        </div>
+
         <!-- TODAY cards -->
         <div class="metric-grid" id="homeTodayCards">
           <!-- injected -->
@@ -1843,6 +1954,26 @@
             <button class="btn btn-secondary" style="padding: 4px 14px; font-size: var(--text-xs);" id="btnHomeAttn">View All</button>
           </div>
           <div style="padding: var(--space-5);"><div id="homeAttnRows"></div></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== WHAT'S NEW (UPDATE MESSAGE) ==================== -->
+  <section class="screen" id="screen-whats-new">
+    <div class="container">
+      <section>
+        <div class="stack">
+          <p class="eyebrow">Release Notes</p>
+          <h1>What's New</h1>
+          <p class="lead">Updates to this ledger arrive with the app. Everything below works offline, on this device.</p>
+        </div>
+        <div id="updateScreenBody" class="mt-6">
+          <!-- injected by renderWhatsNew() -->
+        </div>
+        <div class="actions mt-6" style="display: flex; gap: var(--space-3);">
+          <button class="btn btn-secondary flex1" id="btnUpdateBackHome">Back to Home</button>
+          <button class="btn btn-primary flex1" id="btnUpdateAck">Got it</button>
         </div>
       </section>
     </div>
@@ -3040,6 +3171,7 @@
           <div class="list-row" onclick="navigate('#screen-history')" style="cursor:pointer;"><div class="main"><div class="value">History</div><div class="sub">Transactions &amp; other day entries</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-reports')" style="cursor:pointer;"><div class="main"><div class="value">Reports</div><div class="sub">14 report types · Export PDF/CSV</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-settings')" style="cursor:pointer;"><div class="main"><div class="value">Settings</div><div class="sub">Business, items, app, data</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-whats-new')" style="cursor:pointer;"><div class="main"><div class="value">What's New <span class="badge badge-blue" id="moreUpdateBadge" style="font-size: var(--text-xs); padding: 2px 6px; margin-left: 6px;">v2.1</span></div><div class="sub">Update message &amp; release notes</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" id="moreSignOut" style="cursor:pointer; margin-top: var(--space-4);"><div class="main"><div class="value" style="color: var(--danger);">Sign out</div><div class="sub">Lock this ledger on this device</div></div><span class="badge badge-gray">→</span></div>
         </div>
       </section>
@@ -3345,6 +3477,88 @@
       ]);
     }
 
+    /* ---------- Update message (What's New) ---------- */
+    const UPDATE_SEEN_KEY = 'vegContractorUpdateSeenV1';
+    const UPDATE = {
+      version: '2.1',
+      released: '2026-10-26',
+      headline: 'Update installed — v2.1',
+      summary: 'Sign-in gate, faster daily entry, and a safer correction trail.',
+      items: [
+        { t: 'Sign-in gate', d: 'The ledger is locked behind a mobile number and PIN, and stays on this device.' },
+        { t: 'Faster daily entry', d: 'Rejections and re-routes are entered without leaving the allocation screen.' },
+        { t: 'Clearer pending dues', d: 'Dues show overdue days and the tender each amount came from.' },
+        { t: 'Safer corrections', d: 'Every edit stays date-stamped to the original transaction date.' }
+      ]
+    };
+    function updateSeen() {
+      try { return localStorage.getItem(UPDATE_SEEN_KEY) === UPDATE.version; } catch (e) { return false; }
+    }
+    function markUpdateSeen() {
+      try { localStorage.setItem(UPDATE_SEEN_KEY, UPDATE.version); } catch (e) { /* stay in-memory */ }
+    }
+    function updateItemsHTML() {
+      return UPDATE.items.map((it, i) => `
+        <div class="update-item">
+          <span class="update-num">${i + 1}</span>
+          <span><span class="t">${esc(it.t)}</span><span class="d">${esc(it.d)}</span></span>
+        </div>`).join('');
+    }
+    function renderUpdateBanner() {
+      const el = $('#homeUpdateCard'); if (!el) return;
+      const show = !updateSeen();
+      el.classList.toggle('hidden', !show);
+      if (!show) { el.innerHTML = ''; return; }
+      el.innerHTML = `
+        <div class="update-head">
+          <div class="update-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
+          </div>
+          <div style="flex:1;">
+            <span class="update-version">v${UPDATE.version} · ${fmtDateShort(UPDATE.released)}</span>
+            <div class="update-title">${esc(UPDATE.headline)}</div>
+            <p class="text-muted text-sm" style="font-size: var(--text-xs); margin-top: var(--space-1);">${esc(UPDATE.summary)}</p>
+          </div>
+        </div>
+        <div class="update-list">${updateItemsHTML()}</div>
+        <div class="update-actions">
+          <button class="btn btn-primary" onclick="openWhatsNew()">See what's new</button>
+          <button class="btn btn-secondary" onclick="dismissUpdate()">Got it</button>
+        </div>`;
+    }
+    function openWhatsNew() { navigate('#screen-whats-new'); }
+    function dismissUpdate() {
+      markUpdateSeen();
+      renderUpdateBanner();
+      renderMore();
+      showToast('Update message dismissed.');
+    }
+    function renderMore() {
+      const badge = $('#moreUpdateBadge'); if (!badge) return;
+      badge.classList.toggle('badge-blue', !updateSeen());
+      badge.classList.toggle('badge-gray', updateSeen());
+    }
+    function renderWhatsNew() {
+      const body = $('#updateScreenBody'); if (!body) return;
+      const ackBtn = $('#btnUpdateAck');
+      if (ackBtn) ackBtn.textContent = updateSeen() ? 'Show again on Home' : 'Got it';
+      body.innerHTML = `
+        <div class="card update-card">
+          <div class="update-head">
+            <div class="update-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <span class="update-version">v${UPDATE.version} · released ${fmtDateShort(UPDATE.released)}</span>
+              <div class="update-title">${esc(UPDATE.headline)}</div>
+              <p class="text-muted text-sm" style="font-size: var(--text-xs); margin-top: var(--space-1);">${esc(UPDATE.summary)}</p>
+            </div>
+          </div>
+          <div class="update-list">${updateItemsHTML()}</div>
+          <p class="update-note">${updateSeen() ? 'This update message is dismissed. It will show again after the next update.' : 'Dismissing hides this message until the next update — nothing is deleted.'}</p>
+        </div>`;
+    }
+
     function nextId(kind) {
       state.seq[kind] = (state.seq[kind] || 0) + 1;
       return kind.charAt(0) + state.seq[kind];
@@ -3512,7 +3726,8 @@
         pl: 'Profit & Loss', reports: 'Reports', 'report-detail': 'Report Detail',
         settings: 'Settings', 'item-mgmt': 'Item Management', business: 'Business Settings',
         'app-settings': 'App Settings', categories: 'Expense Categories', reasons: 'Reason Editor',
-        data: 'Data Management', about: 'About', attention: 'Attention Center'
+        data: 'Data Management', about: 'About', attention: 'Attention Center',
+        'whats-new': "What's New"
       };
       txt('#appTitle', titles[state.currentScreen] || 'Vegetable Contractor');
       updateCartIndicator();
@@ -3585,7 +3800,7 @@
       '#screen-business': '#screen-settings', '#screen-app-settings': '#screen-settings',
       '#screen-categories': '#screen-app-settings', '#screen-reasons': '#screen-app-settings',
       '#screen-data': '#screen-settings', '#screen-about': '#screen-settings',
-      '#screen-attention': '#screen-home'
+      '#screen-attention': '#screen-home', '#screen-whats-new': '#screen-more'
     };
 
     /* ========== Splash auto-route ========== */
@@ -6071,6 +6286,7 @@
         cards = `<div class="metric"><strong>—</strong><span>No supply yet today</span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div>`;
       }
       html('#homeTodayCards', cards);
+      renderUpdateBanner();
 
       // Correction chip (persistent while any correction is open)
       const corrChip = $('#homeCorrectionChip');
@@ -6624,7 +6840,8 @@
       screenRenderers['initial-institutions'] = renderInstList;
       screenRenderers.attention = renderAttention;
       screenRenderers.about = () => {};
-      screenRenderers.more = () => {};
+      screenRenderers.more = renderMore;
+      screenRenderers['whats-new'] = renderWhatsNew;
       screenRenderers['setup-complete'] = () => {};
     }
 
@@ -6658,6 +6875,19 @@
       addEv('#btnForgotPin', forgotPinHelp);
       addEv('#btnUseDemo', fillDemoCredentials);
       addEv('#moreSignOut', signOut);
+
+      // What's New (update message)
+      addEv('#btnUpdateBackHome', () => navigate('#screen-home'));
+      addEv('#btnUpdateAck', () => {
+        if (updateSeen()) {
+          try { localStorage.removeItem(UPDATE_SEEN_KEY); } catch (e) { /* ignore */ }
+          renderUpdateBanner(); renderMore(); renderWhatsNew();
+          showToast('Update message will show on Home again.');
+          return;
+        }
+        dismissUpdate();
+        navigate('#screen-home');
+      });
       ['#inpLoginPhone', '#inpLoginPin'].forEach(sel => {
         const el = $(sel); if (!el) return;
         el.addEventListener('input', () => {
