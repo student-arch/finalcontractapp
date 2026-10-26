@@ -4373,7 +4373,10 @@
         });
       });
       const expenses = cartExpenseTotal();
-      const totalCost = r2(allocCost + losses + expenses);
+      // §2.2 formula 7: Total Cost = New Purchase Cost + Inventory Used Cost + Additional Expenses
+      // investment = sum of lineCost = all new purchase + inventory used cost (all lines)
+      // losses are already inside investment (line costs), do not subtract again
+      const totalCost = r2(investment + expenses);
       revenue = r2(revenue); allocCost = r2(allocCost); losses = r2(losses);
       return {
         investment: r2(investment), supQty: r2(supQty), revenue, allocCost, expenses,
@@ -4424,8 +4427,8 @@
       state.cart.allocations[allocItemId] = state.cart.allocations[allocItemId].filter(a => state.institutions.some(i => i.id === a.instId));
       state.institutions.filter(i => i.active).forEach(inst => {
         if (state.cart.allocations[allocItemId].some(a => a.instId === inst.id)) return;
-        const rate = fixedRate(inst, allocItemId);
-        state.cart.allocations[allocItemId].push({ instId: inst.id, qty: 0, rate: rate || 0, custom: !rate });
+        const fr = fixedRate(inst, allocItemId);
+        state.cart.allocations[allocItemId].push({ instId: inst.id, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null });
       });
       const list = $('#allocList');
       const vegIds = [...new Set(state.cart.items.map(c => c.itemId))].filter(id => itemById(id));
@@ -4447,7 +4450,7 @@
           <div style="padding: var(--space-4) var(--space-5);">`;
       state.institutions.filter(i => i.active).forEach(inst => {
         let alloc = (state.cart.allocations[allocItemId] || []).find(a => a.instId === inst.id);
-        if (!alloc) { const fr = fixedRate(inst, allocItemId); alloc = { instId: inst.id, qty: 0, rate: fr || 0, custom: !fr }; }
+        if (!alloc) { const fr = fixedRate(inst, allocItemId); alloc = { instId: inst.id, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; state.cart.allocations[allocItemId].push(alloc); }
         const rejObj = state.cart.rejected || (state.cart.rejected = {});
         const rejected = (rejObj[allocItemId] || []).find(r => r.instId === inst.id);
         const rejQty = rejected ? rejected.qty : 0;
@@ -4532,7 +4535,7 @@
     }
     function updateAllocQtyLive(itemId, instId, qty, inp) {
       let a = (state.cart.allocations[itemId] || []).find(x => x.instId === instId);
-      if (!a) { a = { instId, qty: 0, rate: fixedRate(instById(instId), itemId) || 0, custom: false }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
+      if (!a) { const fr = fixedRate(instById(instId), itemId); a = { instId, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
       a.qty = r2(Math.max(0, qty));
       saveState();
       const it = itemById(itemId), agg = itemAgg(itemId);
@@ -4551,12 +4554,14 @@
     }
     function fixedRate(inst, itemId) {
       const active = inst.tenders.filter(t => TODAY >= t.start && TODAY <= t.end);
-      if (active.length === 0) return 0;
+      if (active.length === 0) return { rate: 0, tenderId: null };
       const withPrice = active.filter(t => (inst.fixedPrices[t.id] || []).some(p => p.itemId === itemId));
-      if (withPrice.length === 0) return 0;
-      if (withPrice.length === 1) return (inst.fixedPrices[withPrice[0].id] || []).find(p => p.itemId === itemId).rate;
-      // Multiple tenders have price — ambiguous, return 0 to trigger tender picker
-      return 0;
+      if (withPrice.length === 0) return { rate: 0, tenderId: null };
+      // Default rule (§6.5): latest start date wins ties; picker only when genuinely ambiguous
+      withPrice.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+      const chosen = withPrice[withPrice.length - 1]; // latest start date
+      const entry = (inst.fixedPrices[chosen.id] || []).find(p => p.itemId === itemId);
+      return { rate: entry ? entry.rate : 0, tenderId: chosen.id };
     }
     let tenderPickCtx = null;
     function tenderPicker(instId, itemId, onSelect) {
@@ -4639,6 +4644,7 @@
         const prices = inst.fixedPrices[t.id] || [];
         return prices.some(p => p.itemId === allocItemId);
       });
+      const activeTenders = inst.tenders.filter(t => TODAY >= t.start && TODAY <= t.end);
       const body = `
         <div class="field"><label>Institution</label><div class="value">${esc(inst.name)}</div></div>
         <div class="field"><label>Item</label><div class="value">${esc(it.name)}</div></div>
@@ -4647,22 +4653,69 @@
       const actions = [
         { label: 'Cancel', cls: 'btn-secondary', onClick: () => {} }
       ];
-      if (tendersWithPrice.length > 0) {
+      // Add price: when multiple active tenders, ask which tender (§6.5, §7.2)
+      if (activeTenders.length > 1) {
+        actions.push({ label: 'Add Price — Choose Tender', cls: 'btn-primary', onClick: () => {
+          closeModal();
+          // Show tender picker first, then go to price screen
+          const withPriceForItem = activeTenders.filter(t => (inst.fixedPrices[t.id] || []).some(p => p.itemId === allocItemId));
+          if (withPriceForItem.length > 1) {
+            tenderPickCtx = { instId, itemId: allocItemId, onSelect: (t) => {
+              if (t) {
+                state._pendingPriceItem = allocItemId;
+                state._pendingPriceInst = instId;
+                state._pendingPriceTender = t.id;
+                navigate('#screen-tender-prices');
+                renderTenderPrices();
+              }
+              tenderPickCtx = null;
+            }};
+            openModal('Select Tender (BS-14)', `
+              <div class="field"><label>Item</label><div class="value">${esc(it.name)}</div></div>
+              <div class="field"><label>Institution</label><div class="value">${esc(inst.name)}</div></div>
+              <p class="text-muted text-sm">Multiple active tenders. Choose which tender the new price belongs to:</p>
+              ${withPriceForItem.map(t => {
+                const entry = (inst.fixedPrices[t.id] || []).find(p => p.itemId === allocItemId);
+                return `<div class="list-row" style="cursor:pointer;" onclick="app.pickTenderMissingPrice('${t.id}', ${entry ? entry.rate : 0})">
+                  <div class="main"><div class="value">${esc(t.name)}</div><div class="sub">${esc(t.number)} · ${fmtDateShort(t.start)} → ${fmtDateShort(t.end)}</div></div>
+                  <div class="value">${entry ? '₹' + formatINR(entry.rate) + '/' + esc(it.unit) : 'No price yet — will be added'}</div>
+                </div>`;
+              }).join('')}
+            `, [
+              { label: 'Cancel', cls: 'btn-secondary', onClick: () => { tenderPickCtx = null; } }
+            ]);
+          } else {
+            state._pendingPriceItem = allocItemId;
+            state._pendingPriceInst = instId;
+            state._pendingPriceTender = withPriceForItem[0]?.id || null;
+            navigate('#screen-tender-prices');
+            renderTenderPrices();
+          }
+        }});
+      } else if (tendersWithPrice.length > 0) {
         actions.push({ label: 'Add Price to a Tender', cls: 'btn-primary', onClick: () => {
-          closeModal(); navigate('#screen-tender-prices'); renderTenderPrices();
-          // pre-select this item by storing in state
-          state._pendingPriceItem = allocItemId;
-          state._pendingPriceInst = instId;
+          closeModal(); state._pendingPriceItem = allocItemId; state._pendingPriceInst = instId; state._pendingPriceTender = null;
+          navigate('#screen-tender-prices'); renderTenderPrices();
         }});
       } else {
         actions.push({ label: 'Add Price (new tender)', cls: 'btn-primary', onClick: () => {
-          closeModal(); navigate('#screen-tender-prices'); renderTenderPrices();
-          state._pendingPriceItem = allocItemId;
-          state._pendingPriceInst = instId;
+          closeModal(); state._pendingPriceItem = allocItemId; state._pendingPriceInst = instId; state._pendingPriceTender = null;
+          navigate('#screen-tender-prices'); renderTenderPrices();
         }});
       }
       actions.push({ label: 'Use Custom Rate (this allocation only)', cls: 'btn-secondary', onClick: () => { closeModal(); customRate(instId); } });
       openModal('No fixed tender price (BS-15)', body, actions);
+    }
+
+    function pickTenderMissingPrice(tenderId, rate) {
+      closeModal();
+      const ctx = tenderPickCtx; tenderPickCtx = null;
+      if (!ctx) return;
+      state._pendingPriceItem = ctx.itemId;
+      state._pendingPriceInst = ctx.instId;
+      state._pendingPriceTender = tenderId;
+      navigate('#screen-tender-prices');
+      renderTenderPrices();
     }
     function autoSplit() {
       const it = itemById(allocItemId); if (!it) return;
@@ -4673,7 +4726,7 @@
       let left = agg.supply;
       insts.forEach((inst, idx) => {
         let a = state.cart.allocations[allocItemId].find(x => x.instId === inst.id);
-        if (!a) { a = { instId: inst.id, qty: 0, rate: fixedRate(inst, allocItemId) || 0, custom: false }; state.cart.allocations[allocItemId].push(a); }
+        if (!a) { const fr = fixedRate(inst, allocItemId); a = { instId: inst.id, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; state.cart.allocations[allocItemId].push(a); }
         a.qty = idx === insts.length - 1 ? r2(left) : base;
         left = r2(left - a.qty);
       });
@@ -4681,7 +4734,7 @@
     }
     function updateAllocQty(itemId, instId, qty) {
       let a = (state.cart.allocations[itemId] || []).find(x => x.instId === instId);
-      if (!a) { a = { instId, qty: 0, rate: fixedRate(instById(instId), itemId) || 0, custom: false }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
+      if (!a) { const fr = fixedRate(instById(instId), itemId); a = { instId, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
       a.qty = r2(Math.max(0, qty));
       renderAllocation();
     }
@@ -4690,8 +4743,13 @@
       const agg = itemAgg(allocItemId);
       const rem = r2(agg.supply - allocatedQtyOf(allocItemId) - remainingEntryQty(allocItemId));
       if (rem <= 0) { showToast('Nothing unallocated.', 'error'); return; }
+      // Purchase-rate basis for remaining stock (§8.3: original purchase rate, not blended)
+      const purLines = state.cart.items.filter(l => l.itemId === allocItemId && l.purchaseQty > 0);
+      const purQty = r2(purLines.reduce((s, l) => s + l.purchaseQty, 0));
+      const purCost = r2(purLines.reduce((s, l) => s + l.purchaseQty * l.rate, 0));
+      const purRate = purQty > 0 ? r2(purCost / purQty) : agg.unitCost;
       openModal('Remaining → Inventory (BS-03)', `
-        <p class="text-muted text-sm">Move ${formatQty(rem)} ${esc(it.unit)} to inventory at ${formatINR(agg.unitCost)}/${esc(it.unit)} — a recoverable asset (not today's cost).</p>`, [
+        <p class="text-muted text-sm">Move ${formatQty(rem)} ${esc(it.unit)} to inventory at ${formatINR(purRate)}/${esc(it.unit)} — a recoverable asset (not today's cost).</p>`, [
         { label: 'Cancel', cls: 'btn-secondary', onClick: () => {} },
         { label: 'Add to Inventory', cls: 'btn-primary', onClick: () => { (state.cart.remaining[allocItemId] = state.cart.remaining[allocItemId] || []).push({ qty: rem, action: 'inventory', reason: '' }); renderAllocation(); showToast('Held back for inventory ✓'); } }
       ]);
@@ -4879,10 +4937,12 @@
       const vegRows = state.cart.items.map(line => {
         const it = itemById(line.itemId); const agg = itemAgg(line.itemId);
         const rev = expectedRevenueOf(line.itemId);
-        const cost = r2((agg.lc - remainingCostForItem(line.itemId)) * (state.cart.items.length ? 1 : 1));
-        const rem = state.cart.remaining[line.itemId] || [];
-        let lossCost = 0; rem.forEach(m => { if (m.action === 'loss') lossCost += agg.supply > 0 ? m.qty / agg.supply * agg.lc : 0; });
-        const p = r2(rev - r2(cost + lossCost));
+        // Veg-wise cost today = total item cost minus what went to inventory (remaining + rejected→inventory)
+        // Loss portions stay in cost (they reduce profit); inventory portions are assets
+        const invRemCost = remainingCostForItem(line.itemId);
+        const rejInvCost = r2(((state.cart.rejected[line.itemId] || []).filter(m => m.action === 'inventory').reduce((s, m) => s + (agg.supply > 0 ? m.qty / agg.supply * agg.lc : 0), 0)));
+        const cost = r2(agg.lc - invRemCost - rejInvCost);
+        const p = r2(rev - cost);
         return `<div class="list-row"><div class="main"><div class="value">${esc(it ? it.name : '')}</div><div class="sub">${formatQty(agg.supply)} ${esc(it ? it.unit : '')} → ${formatINR(rev)}</div></div><div class="value ${p < 0 ? 'loss' : 'profit'}">${fmtSign(p)}</div></div>`;
       }).join('') || '<p class="text-muted text-sm">—</p>';
       const instProfitRows = (() => {
@@ -5051,7 +5111,8 @@
         });
         const rems = state.cart.remaining[line.itemId] || [];
         rems.filter(m => m.action === 'inventory').forEach(m => {
-          const unit = lineSupply(line) > 0 ? r2(lineCost(line) / lineSupply(line)) : line.rate;
+          // Remaining stock is from new purchase — use the line's purchase rate, not blended (§16.2)
+          const unit = line.rate || 0;
           const lot = { id: 'lot' + ('' + (++state.seq.lot)), itemId: line.itemId, qty: r2(m.qty), originalRate: unit, status: 'Available', source: `Remaining — ${fmtDateShort(state.cart.date)}`, dateAdded: state.cart.date, movements: [{ date: state.cart.date, qty: m.qty, source: 'Day remaining' }] };
           state.inventory.push(lot);
           created.push(lot.id);
@@ -5221,10 +5282,9 @@
       const lines = trx.items.map(it => `• ${itemNameOf(it.itemId)} — ${formatQty(it.qty)} @ ₹${it.rate} = ₹${Math.round(it.cost).toLocaleString('en-IN')}`);
       let alloc = trx.allocations.map(a => `• ${instNameOf(a.instId)} — ${formatQty(a.netQty != null ? a.netQty : a.qty)}${a.rejectQty ? ` (−${formatQty(a.rejectQty)} rejected)` : ''} @ ₹${a.rate} = ₹${Math.round(a.revenue).toLocaleString('en-IN')}`);
       const txt2 = `Bill memo — ${trx.id} · ${fmtDate(trx.date)} (${trx.revision})\nPurchases:\n${lines.join('\n')}\nSupplies:\n${alloc.join('\n')}\n\nRevenue ${formatINR(trx.revenue)} · Result ${fmtSign(trx.profit)}`;
-      if (navigator.share) { navigator.share({ title: 'Bill Memo', text: txt2 }).catch(() => {}); showToast('Memo generated — Shared ✓'); }
-      else if (navigator.clipboard) { navigator.clipboard.writeText(txt2).then(() => showToast('Memo generated — copied ✓')).catch(() => showToast('Memo generated ✓')); }
-      if (navigator.share) { navigator.share({ title: 'Bill Memo', text: txt2 }).catch(() => {}); markBillShared(trx.id); showToast('Memo generated — Shared ✓'); }
-      else if (navigator.clipboard) { navigator.clipboard.writeText(txt2).then(() => { markBillShared(trx.id); showToast('Memo generated — copied ✓'); }).catch(() => showToast('Memo generated ✓')); }
+      const done = () => { markBillShared(trx.id); showToast('Memo generated — Shared ✓'); };
+      if (navigator.share) { navigator.share({ title: 'Bill Memo', text: txt2 }).catch(() => {}); done(); }
+      else if (navigator.clipboard) { navigator.clipboard.writeText(txt2).then(() => { done(); }).catch(() => { markBillShared(trx.id); showToast('Memo generated ✓'); }); }
       else { markBillShared(trx.id); showToast('Memo generated ✓'); }
     }
     function markBillShared(trxId) {
@@ -5303,6 +5363,17 @@
         showToast('Post-lock adjustment recorded.');
       }
       saveState();
+      // Money impact: create a dues deduction so Billed − Deductions − Received reconciles (§7.5.7)
+      const instId = trx.allocations[0]?.instId || '';
+      if ((type === 'deduction' || type === 'weight') && amt > 0) {
+        const inst = instById(instId);
+        const d = { date, reason: type === 'weight' ? 'Accepted weight difference' : (gv('#plaReason') || 'Other'), amount: r2(amt), note: `Post-lock adjustment ${trx.id}` };
+        const bills = state.bills.filter(b => b.instId === instId);
+        const open = bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === instId).reduce((s, p) => s + p.amount, 0)) > 0);
+        if (open) { open.deductions.push(d); open.net = r2(open.gross - open.deductions.reduce((s, x) => s + x.amount, 0)); }
+        else { d.instId = instId; state.dedPending.push(d); }
+        saveState();
+      }
       renderTrxDetail(trxId);
       renderHome();
     }
@@ -5365,7 +5436,9 @@
       const billed = billedPending(instId), accrued = accruedPending(instId);
       const collected = r2(state.payments.filter(p => p.instId === instId).reduce((s, p) => s + p.amount, 0));
       const billedGross = r2(state.bills.filter(b => b.instId === instId).reduce((s, b) => s + b.gross, 0));
-      return { billed, accrued, totalPending: r2(billed + accrued), collected, billedGross };
+      const cb = creditBalance(instId);
+      const totalPending = r2(billed + accrued - cb); // credit balance reduces pending
+      return { billed, accrued, totalPending, collected, billedGross, creditBalance: cb };
     }
     function totalPendingAll() { return r2(state.institutions.reduce((s, i) => s + instSummary(i.id).totalPending, 0)); }
     function creditBalance(instId) {
@@ -5390,7 +5463,7 @@
       sv('#ieName', inst ? inst.name : ''); sv('#ieContact', inst ? inst.contact : ''); sv('#iePhone', inst ? inst.phone : ''); sv('#ieAddr', inst ? inst.address : ''); sv('#ieNotes', inst ? (inst.location || '') : '');
       html('#ieTenders', inst ? inst.tenders.map(t => `
         <div class="list-row"><div class="main"><div class="value">${esc(t.name)}</div><div class="sub">${esc(t.number)} · ${esc(t.start)} → ${esc(t.end)}</div></div><button class="btn btn-secondary" style="padding:4px 10px; font-size:var(--text-xs);" onclick="app.editTender('${instId}','${t.id}')">Edit</button></div>`).join('') + `
-        <div class="actions mt-4"><button class="btn btn-danger" onclick="app.deleteInstCheck()">Delete Institution</button></div>`
+        <div class="actions mt-4"><button class="btn btn-danger" onclick="app.deleteInstCheck()">Deactivate Institution</button></div>`
         : '<p class="text-muted text-sm">A default tender is created with the institution.</p>');
       navigate('#screen-inst-edit');
     }
@@ -5446,7 +5519,7 @@
         <div class="list-row"><div class="main"><div class="value">${esc(itemNameOf(p.itemId))}</div></div><div class="value">${formatINR(p.rate)}${p.rate ? '/' + esc(itemIt(p.itemId)) : ''}</div></div>`).join('') : '<p class="text-muted text-sm">No tender prices set — allocations default to ₹0.</p>');
       const dues = instSummary(inst.id);
       const cb = creditBalance(inst.id);
-      const effectivePending = r2(dues.totalPending - cb);
+      const effectivePending = r2(dues.totalPending); // totalPending already nets credit balance
       html('#profDuesRows', `
         <div class="list-row"><div class="main"><div class="value">Total Billed</div><div class="sub">${formatINR(dues.billedGross)} sum over issued bills</div></div><div class="value">${formatINR(dues.billedGross)}</div></div>
         <div class="list-row"><div class="main"><div class="value">Collected</div><div class="sub">over all periods</div></div><div class="value profit">${formatINR(dues.collected)}</div></div>
@@ -5531,7 +5604,10 @@
         html('#tpSubSure', '');
         return;
       }
-      const tender = inst.tenders.find(t => TODAY <= t.end) || inst.tenders[inst.tenders.length - 1];
+      // Pre-select tender from missing-price flow (§6.5: Add Price asks which tender)
+      const pendingTender = state._pendingPriceTender && inst.tenders.find(t => t.id === state._pendingPriceTender);
+      const tender = pendingTender || inst.tenders.find(t => TODAY <= t.end) || inst.tenders[inst.tenders.length - 1];
+      if (pendingTender) state._pendingPriceTender = null;
       const prices = (inst.fixedPrices[tender.id] || []);
       txt('#tpSub', `Rates apply only within the tender (fixed) · ${esc(tender ? tender.name : '')}`);
       html('#tpList', prices.length ? prices.map(p => `
@@ -5632,13 +5708,12 @@
 
     /* ========== BS-09 Record Payment (with deductions + overpayment intent step G-1) ========== */
     let _payDeductions = []; // { reason, amount } for current payment
-    function recordPayModal() {
+    function recordPayModal(keepDeductions) {
       const inst = instById(state.selectedInstId); if (!inst) return;
       const bills = state.bills.filter(b => b.instId === inst.id);
       const dues = instSummary(inst.id);
-      _payDeductions = [];
+      if (!keepDeductions) _payDeductions = [];
       const dedHtml = _payDeductions.length ? _payDeductions.map(d => `<div class="list-row"><div class="main"><div class="value">${esc(d.reason)}</div><div class="sub">Deduction line</div></div><div class="value loss">−${formatINR(d.amount)}</div></div>`).join('') : '<p class="text-muted text-sm">No deduction lines yet.</p>';
-      const totalReceived = 0;
       const totalDed = r2(_payDeductions.reduce((s,d)=>s+d.amount,0));
       openModal('Record Payment (BS-09)', `
         <p class="text-muted text-sm" id="pyPendingText">Pending ${formatINR(dues.totalPending)} (billed ${formatINR(dues.billed)} + unbilled ${formatINR(dues.accrued)}).</p>
@@ -5667,7 +5742,7 @@
           const amt = parseFloat(gv('#pdAmt')) || 0;
           if (amt <= 0) { showToast('Enter amount.', 'error'); return false; }
           _payDeductions.push({ reason: gv('#pdReason') || 'Quality', amount: r2(amt), note: gv('#pdNote') || '' });
-          closeModal(); recordPayModal(); showToast('Deduction line added.');
+          closeModal(); recordPayModal(true); showToast('Deduction line added.');
         } }
       ]);
       openKeypadListen('#pdAmt', 'Amount');
@@ -5696,14 +5771,33 @@
     function savePaymentFinal(inst, amt, isCredit) {
       const deductions = [..._payDeductions];
       _payDeductions = [];
-      state.payments.push({ id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: r2(amt), method: gv('#pyMethod'), against: gv('#pyAgainst'), note: gv('#pyNote'), creditBalance: isCredit, deductions });
-      // Apply deductions to open bill if any
+      const against = gv('#pyAgainst') || '';
+      const payment = { id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: r2(amt), method: gv('#pyMethod'), against, note: gv('#pyNote'), creditBalance: false, deductions };
+      state.payments.push(payment);
+      // Apply deductions to open bill or hold pending
       const bills = state.bills.filter(b => b.instId === inst.id);
-      const openBill = bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === inst.id).reduce((s,p)=>s+p.amount,0)) > 0);
       deductions.forEach(d => {
-        if (openBill) { openBill.deductions.push(d); openBill.net = r2(openBill.gross - openBill.deductions.reduce((s,x)=>s+x.amount,0)); }
+        const openBill = against ? bills.find(b => b.id === against) : bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === inst.id).reduce((s,p)=>s+p.amount,0)) > 0);
+        if (openBill) { openBill.deductions.push(d); openBill.net = r2(openBill.gross - openBill.deductions.reduce((s, x) => s + x.amount, 0)); }
         else { d.instId = inst.id; state.dedPending.push(d); }
       });
+      // Apply received amount to bills FIFO (oldest first), respecting 'against' selection
+      let remaining = r2(amt);
+      const targets = against ? bills.filter(b => b.id === against) : bills.slice().sort((a, b) => a.date > b.date ? 1 : -1);
+      targets.forEach(b => {
+        if (remaining <= 0.0001) return;
+        const alreadyPaid = r2(state.payments.filter(p => p.against === b.id && p.instId === inst.id && p.id !== payment.id).reduce((s, p) => s + p.amount, 0));
+        const pending = r2(b.net - alreadyPaid);
+        const apply = Math.min(remaining, pending);
+        if (apply > 0.0001) { state.payments.push({ id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: apply, method: gv('#pyMethod'), against: b.id, note: gv('#pyNote') || 'Auto-applied', creditBalance: false, deductions: [] }); remaining = r2(remaining - apply); }
+      });
+      // If credit path and there's still remaining after covering bills, it's credit balance
+      if (isCredit && remaining > 0.0001) {
+        payment.creditBalance = true;
+        payment.amount = r2(payment.amount - remaining); // original payment covers what it could
+        const creditPay = { id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: remaining, method: gv('#pyMethod'), against: '', note: gv('#pyNote') || 'Credit balance', creditBalance: true, deductions: [] };
+        state.payments.push(creditPay);
+      }
       saveState(); showToast('Payment recorded ✓' + (isCredit ? ' · credit balance created' : ''));
       renderInstProfile(); renderReceivablesSafe(); renderDuesMenu();
     }
@@ -5770,12 +5864,13 @@
       const rows = state.institutions.map(inst => {
         const d = instSummary(inst.id);
         return `<div class="list-row" onclick="app.openInst('${inst.id}')" style="cursor:pointer;">
-          <div class="main"><div class="value">${esc(inst.name)}</div><div class="sub">Billed ${formatINR(d.billed)} + Unbilled ${formatINR(d.accrued)}</div></div>
+          <div class="main"><div class="value">${esc(inst.name)}</div><div class="sub">Billed ${formatINR(d.billed)} + Unbilled ${formatINR(d.accrued)}${d.creditBalance > 0 ? ' · Credit −' + formatINR(d.creditBalance) : ''}</div></div>
           <div class="value ${d.totalPending > 0 ? 'loss' : 'profit'}">${formatINR(d.totalPending)}</div>
         </div>`;
       }).join('');
+      const totalPending = r2(state.institutions.reduce((s, i) => s + instSummary(i.id).totalPending, 0));
       html('#duesList', `${rows || '<p class="text-muted text-sm">No institutions yet.</p>'}
-        <div class="list-row flush" style="border-top:1px solid var(--border);"><div class="main"><div class="value" style="font-weight:700;">Total pending</div><div class="sub">Profit ≠ cash — accrued supplies are tracked till billed</div></div><div class="value loss">${formatINR(totalPendingAll())}</div></div>`);
+        <div class="list-row flush" style="border-top:1px solid var(--border);"><div class="main"><div class="value" style="font-weight:700;">Total pending</div><div class="sub">Profit ≠ cash — accrued supplies are tracked till billed</div></div><div class="value loss">${formatINR(totalPending)}</div></div>`);
     }
     function renderDuesMenu() { if (state.currentScreen === 'dues') renderDues(); }
 
@@ -6001,6 +6096,7 @@
     function dayEntryProfit(e) {
       if (e.type === 'sale') return r2(e.revenue - e.cost);
       if (e.type === 'waste') return -e.cost;
+      if (e.type === 'adjustment') return -e.amount;
       if (e.type === 'deduction') return 0;
       if (e.type === 'voucher') return -e.amount;
       return 0;
@@ -6226,11 +6322,21 @@
       });
       state.institutions.forEach(inst => {
         const d = instSummary(inst.id);
-        if (d.billed > 0) {
-          const oldest = state.bills.filter(b => b.instId === inst.id).map(b => b.date).sort()[0];
-          const age = oldest ? daysBetween(oldest, TODAY) : 0;
-          const term = (inst.tenders[0] || {}).overdueAlertDays || state.settings.overdueAlertDays;
-          if (age >= term) alerts.push({ kind: 'longPending', title: 'Payment Due Alert', sub: inst.name + ` — bill pending ${formatINR(d.billed)} for ${age} days`, badge: 'Due', color: 'danger', go: '#screen-dues' });
+        // Payment Due Alert (§14): tender period ended + overdue alert days passed with unpaid billing
+        const overdueAlertDays = state.settings.overdueAlertDays || 7;
+        inst.tenders.forEach(t => {
+          const periodEnded = TODAY > t.end;
+          const daysPastEnd = periodEnded ? daysBetween(t.end, TODAY) : 0;
+          if (periodEnded && daysPastEnd >= overdueAlertDays && d.totalPending > 0) {
+            alerts.push({ kind: 'paymentDue', title: 'Payment Due Alert', sub: inst.name + ` — ₹${formatINR(d.totalPending)} pending, ${daysPastEnd} days past tender end`, badge: 'Due', color: 'danger', go: '#screen-dues' });
+          }
+        });
+        // Long-Pending Dues (§14): aging beyond contractor-set threshold (default 30 days)
+        const oldestBill = state.bills.filter(b => b.instId === inst.id).map(b => b.date).sort()[0];
+        const age = oldestBill ? daysBetween(oldestBill, TODAY) : 0;
+        const longPendingThreshold = state.settings.longPendingDays || 30;
+        if (d.billed > 0 && age >= longPendingThreshold) {
+          alerts.push({ kind: 'longPending', title: 'Long-Pending Dues', sub: inst.name + ` — bill pending ${formatINR(d.billed)} for ${age} days`, badge: 'Due', color: 'danger', go: '#screen-dues' });
         }
         inst.tenders.forEach(t => {
           const left = daysBetween(TODAY, t.end);
@@ -6256,32 +6362,65 @@
     }
     function alertGo(target) { navigate(target); }
 
-    /* ========== Home metrics ========== */
+    /* Day entries aggregated for a given date — used by Home TODAY cards and P&L */
+    function dayEntriesForDate(date) {
+      const ents = state.dayEntries.filter(e => e.date === date);
+      let rev = 0, cost = 0, exp = 0, profit = 0;
+      ents.forEach(e => {
+        if (e.type === 'sale') { rev += e.revenue; cost += e.cost; profit += e.revenue - e.cost; }
+        else if (e.type === 'waste') { cost += e.cost; profit -= e.cost; }
+        else if (e.type === 'adjustment') { profit -= e.amount; }
+        else if (e.type === 'voucher') { exp += e.amount; cost += e.amount; profit -= e.amount; }
+        // settlement: cash-only, no P&L impact
+      });
+      return { rev: r2(rev), cost: r2(cost), exp: r2(exp), profit: r2(profit) };
+    }
     function overallTotals() {
       let inv = 0, rev = 0, exp = 0, profit = 0;
       state.transactions.forEach(t => { inv += (t.newPurchaseCost || 0) + (t.inventoryUsedCost || 0) + (t.expensesTotal || 0); rev += t.revenue; exp += t.expensesTotal; profit += t.profit; });
+      // Day entries feed P&L aggregates (§10.1)
+      state.dayEntries.forEach(e => {
+        if (e.type === 'sale') { rev += e.revenue; inv += e.cost; profit += e.revenue - e.cost; }
+        else if (e.type === 'waste') { inv += e.cost; profit -= e.cost; }
+        else if (e.type === 'adjustment') { profit -= e.amount; }
+        else if (e.type === 'voucher') { exp += e.amount; inv += e.amount; profit -= e.amount; }
+        // settlement: cash-only, no P&L impact
+      });
       return { inv: r2(inv), rev: r2(rev), exp: r2(exp), profit: r2(profit) };
     }
     function renderHome() {
       const s = cartSummary();
       const hasCart = state.cart.items.length > 0;
       const tToday = state.transactions.find(t => t.date === TODAY);
+      const deToday = dayEntriesForDate(TODAY);
       const inWindow = tToday ? daysBetween(tToday.date, TODAY) <= 1 : false;
       const locked = tToday ? daysBetween(tToday.date, TODAY) > 1 : false;
 
       let cards = '';
       if (hasCart) {
+        const totRev = r2(s.revenue + deToday.rev);
+        const totCost = r2(s.totalCost + deToday.cost + deToday.exp);
+        const totProfit = r2(totRev - totCost);
         cards = `
           <div class="metric"><strong>${formatINR(s.investment)}</strong><span>Cart Investment</span></div>
-          <div class="metric"><strong>${formatINR(s.revenue)}</strong><span>Expected Revenue</span></div>
-          <div class="metric ${s.profit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(s.profit)}</strong><span>Expected Profit</span></div>
-          <div class="metric"><strong>${s.margin ? fmtPercent(s.margin) : '—'}</strong><span>Expected Margin</span></div>`;
+          <div class="metric"><strong>${formatINR(totRev)}</strong><span>Expected Revenue</span></div>
+          <div class="metric ${totProfit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(totProfit)}</strong><span>Expected Profit</span></div>
+          <div class="metric"><strong>${totRev ? ((totProfit / totRev) * 100).toFixed(2) : '—'}%</strong><span>Expected Margin</span></div>`;
       } else if (tToday) {
+        const totRev = r2(tToday.revenue + deToday.rev);
+        const totCost = r2(tToday.totalCost + deToday.cost + deToday.exp);
+        const totProfit = r2(totRev - totCost);
         cards = `
-          <div class="metric"><strong>${formatINR(tToday.totalCost)}</strong><span>Day Investment</span></div>
-          <div class="metric"><strong>${formatINR(tToday.revenue)}</strong><span>Day Revenue</span></div>
-          <div class="metric ${tToday.profit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(tToday.profit)}</strong><span>Day Profit</span></div>
-          <div class="metric"><strong>${fmtPercent(tToday.margin)}</strong><span>Day Margin</span></div>`;
+          <div class="metric"><strong>${formatINR(totCost)}</strong><span>Day Investment</span></div>
+          <div class="metric"><strong>${formatINR(totRev)}</strong><span>Day Revenue</span></div>
+          <div class="metric ${totProfit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(totProfit)}</strong><span>Day Profit</span></div>
+          <div class="metric"><strong>${totRev ? ((totProfit / totRev) * 100).toFixed(2) : '—'}%</strong><span>Day Margin</span></div>`;
+      } else if (deToday.rev > 0 || deToday.cost > 0 || deToday.exp > 0 || deToday.profit !== 0) {
+        cards = `
+          <div class="metric"><strong>${formatINR(deToday.cost + deToday.exp)}</strong><span>Day Investment</span></div>
+          <div class="metric"><strong>${formatINR(deToday.rev)}</strong><span>Day Revenue</span></div>
+          <div class="metric ${deToday.profit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(deToday.profit)}</strong><span>Day Profit</span></div>
+          <div class="metric"><strong>${deToday.rev ? ((deToday.profit / deToday.rev) * 100).toFixed(2) : '—'}%</strong><span>Day Margin</span></div>`;
       } else {
         cards = `<div class="metric"><strong>—</strong><span>No supply yet today</span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div>`;
       }
@@ -6352,14 +6491,14 @@
             </div>
             <div class="value ${s.profit >= 0 ? 'profit' : 'loss'}">${fmtSign(s.profit)}</div>
           </div>
-          <p class="text-muted text-sm mt-3" style="font-size: var(--text-xs);">${cartEmpty() ? 'Cart is empty.' : 'Expected profit before confirm — review allocations & expenses first.'}</p>`);
+          <p class="text-muted text-sm mt-3" style="font-size: var(--text-xs);">${hasCart ? 'Expected profit before confirm — review allocations & expenses first.' : 'Cart is empty.'}</p>`);
       }
       const billedTotal = r2(state.institutions.reduce((x, i) => x + instSummary(i.id).billed, 0));
       const accruedTotal = r2(state.institutions.reduce((x, i) => x + instSummary(i.id).accrued, 0));
       txt('#homePendingAmt', `Pending ${formatINR(totalPendingAll())}`);
       html('#homePendingRows', `
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('#screen-dues')">
-          <div class="main"><div class="value">Billed pending</div><div class="sub">${state.institutions.filter(i => instSummary(i.id).billed > 0).map(i => i.name + ' ' + formatINR(instSummary(i.id).billed)).join(' · ') || 'No open bills'}</div></div>
+          <div class="main"><div class="value">Billed pending</div><div class="sub">${state.institutions.filter(i => instSummary(i.id).totalPending > 0).map(i => i.name + ' ' + formatINR(instSummary(i.id).totalPending)).join(' · ') || 'No open bills'}</div></div>
           <div class="value" style="color:var(--fg-2)">${formatINR(billedTotal)}</div>
         </div>
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('#screen-dues')">
@@ -6406,19 +6545,37 @@
     }
     function groupByInst(trxs) {
       return state.institutions.map(inst => {
-        let rev = 0, cost = 0, qty = 0;
-        trxs.forEach(t => t.allocations.forEach(a => { if (a.instId === inst.id) { rev += a.revenue; cost += a.cost; qty += (a.netQty != null ? a.netQty : a.qty); } }));
-        return { label: inst.name, sub: `${formatQty(r2(qty))} kg · ${formatINR(rev)} → ${formatINR(cost)}`, profit: r2(rev - cost) };
+        let rev = 0, cost = 0, qty = 0, assignedExp = 0;
+        trxs.forEach(t => {
+          t.allocations.forEach(a => { if (a.instId === inst.id) { rev += a.revenue; cost += a.cost; qty += (a.netQty != null ? a.netQty : a.qty); } });
+          t.expenses.forEach(e => { if (e.assignedTo === inst.id) assignedExp += e.amount; });
+        });
+        // Subtract deductions for Effective Revenue = Supply − Deductions (§7.5.7, §11)
+        const billDed = r2(state.bills.filter(b => b.instId === inst.id).reduce((s, b) => s + b.deductions.reduce((sd, d) => sd + d.amount, 0), 0));
+        const pendDed = r2(state.dedPending.filter(d => d.instId === inst.id).reduce((s, d) => s + d.amount, 0));
+        const deductions = r2(billDed + pendDed);
+        const effectiveRev = r2(rev - deductions);
+        return { label: inst.name, sub: `${formatQty(r2(qty))} kg · ${formatINR(effectiveRev)} → ${formatINR(cost)}${assignedExp > 0 ? ` · exp −${formatINR(assignedExp)}` : ''}${deductions > 0 ? ` · ded −${formatINR(deductions)}` : ''}`, profit: r2(effectiveRev - cost - assignedExp) };
       }).filter(g => g.profit !== 0 || /→/.test(g.sub));
     }
     function groupByVeg(trxs) {
       return state.items.map(item => {
-        let rev = 0, cost = 0, qty = 0;
-        trxs.forEach(t => t.allocations.forEach(a => { if (a.itemId === item.id) { rev += a.revenue; cost += a.cost; qty += a.qty; } }));
-        return { label: item.name, sub: `${formatQty(r2(qty))} ${item.unit} · ${formatINR(rev)} → ${formatINR(cost)}`, profit: r2(rev - cost) };
+        let rev = 0, cost = 0, qty = 0, waste = 0;
+        trxs.forEach(t => {
+          t.allocations.forEach(a => { if (a.itemId === item.id) { rev += a.revenue; cost += a.cost; qty += a.qty; } });
+          (t.losses || []).forEach(m => { if (m.itemId === item.id) { waste += m.cost; qty += m.qty; } });
+        });
+        // Day-entry waste for this item
+        state.dayEntries.filter(e => e.type === 'waste' && e.itemId === item.id).forEach(e => { waste += e.cost; qty += e.qty; });
+        return { label: item.name, sub: `${formatQty(r2(qty))} ${item.unit} · ${formatINR(rev)} → ${formatINR(r2(cost + waste))}${waste > 0 ? ` · waste −${formatINR(waste)}` : ''}`, profit: r2(rev - r2(cost + waste)) };
       }).filter(g => /→/.test(g.sub));
     }
     function groupByContract(trxs) {
+      // Compute total deductions per institution (bills + pending)
+      const dedByInst = {};
+      state.institutions.forEach(inst => { dedByInst[inst.id] = 0; });
+      state.bills.forEach(b => { b.deductions.forEach(d => { dedByInst[b.instId] = (dedByInst[b.instId] || 0) + d.amount; }); });
+      state.dedPending.forEach(d => { dedByInst[d.instId] = (dedByInst[d.instId] || 0) + d.amount; });
       const groups = {};
       state.institutions.forEach(inst => inst.tenders.forEach(t => groups[inst.name + ' · ' + t.name] = { inst, t, rev: 0, cost: 0, qty: 0 }));
       trxs.forEach(t => t.allocations.forEach(a => {
@@ -6428,7 +6585,13 @@
         const key = inst.name + ' · ' + tender.name;
         groups[key].rev += a.revenue; groups[key].cost += a.cost; groups[key].qty += a.qty;
       }));
-      return Object.entries(groups).filter(([, g]) => g.qty > 0).map(([k, g]) => ({ label: k, sub: `${formatQty(r2(g.qty))} kg · ${formatINR(g.rev)} → ${formatINR(g.cost)}`, profit: r2(g.rev - g.cost) }));
+      return Object.entries(groups).filter(([, g]) => g.qty > 0).map(([k, g]) => {
+        // Allocate institution's total deductions proportionally across its contracts (§11: Effective Revenue = Supply − Deductions)
+        const totalInstRev = Object.entries(groups).filter(([, gg]) => gg.inst.id === g.inst.id).reduce((s, [, gg]) => s + gg.rev, 0);
+        const dedShare = totalInstRev > 0 ? r2((dedByInst[g.inst.id] || 0) * (g.rev / totalInstRev)) : 0;
+        const effectiveRev = r2(g.rev - dedShare);
+        return { label: k, sub: `${formatQty(r2(g.qty))} kg · ${formatINR(effectiveRev)} → ${formatINR(g.cost)}${dedShare > 0 ? ` · −${formatINR(dedShare)} deductions` : ''}`, profit: r2(effectiveRev - g.cost) };
+      });
     }
     function historicPeriod(days) {
       const entries = days.map(d => {
@@ -7078,6 +7241,8 @@
       const d13 = $('#dl13Close'); if (d13) addEv('#dl13Close', () => hideDL('overlay-dl13'));
       const d14 = $('#dl14Close'); if (d14) addEv('#dl14Close', () => hideDL('overlay-dl14'));
       addEv('#btnAttnBack', () => navigate('#screen-home'));
+
+      renderUpdateBanner(); renderMore();
 
       if (loadSavedAuth()) startRouting();
       else navigate('#screen-login');
