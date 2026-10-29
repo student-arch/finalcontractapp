@@ -37,6 +37,9 @@
       --text-lg: clamp(16px, 16px + 0.5vw, 20px);
       --text-xl: clamp(20px, 20px + 1vw, 27px);
       --text-2xl: clamp(26px, 22px + 2.2vw, 42px);
+      --text-metric: clamp(19px, 5vw, 24px);
+      /* Phone-first headline; steps up at the 768 tablet breakpoint */
+      --text-h1: clamp(24px, 20px + 0.9vw, 28px);
       --text-3xl: clamp(36px, 30px + 3.6vw, 58px);
       --text-4xl: clamp(46px, 40px + 5vw, 78px);
       --leading-body: 1.55;
@@ -68,6 +71,21 @@
       --container-gutter-desktop: 36px;
       --container-gutter-tablet: 24px;
       --container-gutter-phone: clamp(16px, 14px + 0.6vw, 32px);
+      /* Shell geometry — single source of truth for the fixed bars.
+         The nav's own height absorbs the home-indicator inset, so the sticky
+         action bar can sit flush on it with no extra safe-area term. */
+      --app-bar-h: 56px;
+      --nav-h: 72px;
+      --bottom-nav-h: calc(var(--nav-h) + env(safe-area-inset-bottom));
+      /* Content clears the fixed bar + safe area + one gutter */
+      --screen-top-offset: calc(var(--app-bar-h) + env(safe-area-inset-top) + var(--space-5));
+      /* Content clears the fixed nav + safe area + one gutter */
+      --screen-bottom-offset: calc(var(--bottom-nav-h) + var(--space-6));
+      /* Sticky action bar height (one row) and reserve under content */
+      --sticky-bar-h: calc(44px + (var(--space-3) * 2) + 1px);
+      /* How many rows the sticky bar occupies; screens with 3+ actions raise
+         this to 2 under 560px. */
+      --sticky-rows: 1;
     }
 
     /* ========== Reset & Base ========== */
@@ -128,20 +146,34 @@
     .screen {
       display: none;
       min-height: 100vh;
-      padding-bottom: 96px;
+      min-height: 100dvh;
+      padding-top: var(--screen-top-offset);
+      padding-bottom: var(--screen-bottom-offset);
+    }
+    /* The single content offset lives on .screen; the legacy global section
+       padding must not stack on top of it. */
+    .screen > .container > section {
+      padding-top: 0;
+    }
+    /* Full-bleed screens centre their own wrapper — keep their offset local. */
+    #screen-login,
+    #screen-splash,
+    #screen-welcome,
+    #screen-setup-complete {
+      padding-top: 0;
     }
     .screen.active {
       display: block;
       animation: screen-in var(--motion-base) var(--ease-standard);
     }
+    /* Opacity only: a transform here would turn .screen into the containing
+       block for the fixed bars and make them jump during the transition. */
     @keyframes screen-in {
       from {
         opacity: 0;
-        transform: translateY(8px);
       }
       to {
         opacity: 1;
-        transform: none;
       }
     }
 
@@ -151,7 +183,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: 72px;
+      height: var(--bottom-nav-h);
       background: var(--surface);
       backdrop-filter: blur(16px) saturate(180%);
       -webkit-backdrop-filter: blur(16px) saturate(180%);
@@ -159,7 +191,7 @@
       box-shadow: 0 -12px 32px rgba(16, 32, 51, 0.06);
       display: flex;
       z-index: 100;
-      padding: 0 env(safe-area-inset-left) 0 env(safe-area-inset-right);
+      padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
     .bottom-nav a {
       flex: 1;
@@ -221,14 +253,14 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 56px;
+      height: calc(var(--app-bar-h) + env(safe-area-inset-top));
+      padding: env(safe-area-inset-top) max(var(--space-4), env(safe-area-inset-right)) 0 max(var(--space-4), env(safe-area-inset-left));
       background: var(--surface);
       backdrop-filter: blur(16px) saturate(180%);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 var(--space-4);
       z-index: 80;
     }
     .app-bar .title {
@@ -239,8 +271,10 @@
     }
     .app-bar .back,
     .app-bar .action {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -299,6 +333,9 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      line-height: 1.4;
     }
     .lead {
       max-width: 640px;
@@ -306,13 +343,18 @@
       font-size: var(--text-lg);
     }
     h1 {
-      font-size: clamp(24px, 20px + 2.5vw, 40px);
+      font-size: var(--text-h1);
       font-weight: 760;
       max-width: 820px;
+      overflow-wrap: break-word;
     }
     h2 {
       font-size: clamp(20px, 18px + 1.5vw, 28px);
       font-weight: 700;
+    }
+    /* Restore the larger headline from tablet width up. */
+    @media (min-width: 768px) {
+      :root { --text-h1: clamp(30px, 2vw + 18px, 40px); }
     }
     h3 {
       font-size: var(--text-xl);
@@ -325,6 +367,7 @@
       align-items: center;
       justify-content: center;
       min-height: 48px;
+      min-width: 44px;
       padding: 0 var(--space-5);
       border: 1px solid transparent;
       border-radius: var(--radius-pill);
@@ -342,7 +385,7 @@
       background: var(--accent);
       color: var(--accent-on);
     }
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
       background: var(--accent-hover);
       transform: translateY(-1px);
     }
@@ -352,7 +395,7 @@
       border-color: var(--border);
       box-shadow: var(--elev-ring);
     }
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       border-color: var(--accent);
       color: var(--accent);
     }
@@ -363,39 +406,76 @@
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      /* A disabled control must not react to the pointer at all. */
+      transform: none;
+    }
+    .btn:disabled:hover,
+    .btn:disabled:active {
+      transform: none;
     }
     .btn-sticky {
       position: fixed;
-      bottom: calc(72px + env(safe-area-inset-bottom));
+      bottom: var(--bottom-nav-h);
       left: 0;
       right: 0;
       max-width: var(--container-max);
       margin-inline: auto;
-      padding: var(--space-3) var(--container-gutter-phone) calc(var(--space-3) + env(safe-area-inset-bottom));
+      padding: var(--space-3) var(--container-gutter-phone);
       background: var(--bg);
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
       display: flex;
-      flex-wrap: nowrap;
-      gap: var(--space-3);
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: var(--space-2) var(--space-3);
       z-index: 70;
       box-shadow: 0 -10px 24px rgba(16, 32, 51, 0.04);
     }
     .btn-sticky .btn {
-      flex: 1 1 0;
-      min-width: 0;
-      min-height: 46px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .btn-sticky .btn-secondary:first-child:not(.flex1) {
-      flex: 0 0 auto;
+      flex: 1 1 auto;
       min-width: 96px;
-      padding: var(--space-3) var(--space-5);
+      min-height: 44px;
+      padding-inline: var(--space-4);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      text-align: center;
+      line-height: 1.15;
+    }
+    /* Secondary actions size to their label; the primary absorbs the slack. */
+    .btn-sticky .btn-secondary {
+      flex: 0 1 auto;
+    }
+    .btn-sticky .btn-primary {
+      flex: 1 1 148px;
+    }
+    /* A lone action keeps its natural width instead of stretching. */
+    .btn-sticky .btn:only-child {
+      flex: 0 0 auto;
+      min-width: 128px;
+    }
+    /* Reserve exactly what the fixed bars cover: nav + the bar's rows. The bar
+       wraps at its flex basis, so the reserve is driven by a row count rather
+       than a single hard-coded height — it can never under-reserve when a
+       second row appears. */
+    .screen.has-sticky {
+      padding-bottom: 0;
     }
     .screen.has-sticky .container {
-      padding-bottom: calc(136px + env(safe-area-inset-bottom));
+      padding-bottom: calc(
+        var(--bottom-nav-h) +
+        (var(--sticky-bar-h) * var(--sticky-rows)) +
+        (var(--space-2) * (var(--sticky-rows) - 1)) +
+        var(--space-5)
+      );
+    }
+    /* Three or more actions wrap to a second row below ~559px (verified at
+       320px and 360px); one- and two-action bars shrink to their 96px floor
+       and stay on a single row. */
+    @media (max-width: 559px) {
+      .screen.has-sticky:has(.btn-sticky > .btn:nth-child(3)) .container {
+        --sticky-rows: 2;
+      }
     }
 
     /* ========== Card ========== */
@@ -459,7 +539,9 @@
     .item-card:active {
       transform: scale(0.985);
       border-color: var(--accent);
-      box-shadow: 0 0 0 4px var(--focus-ring);
+      /* --focus-ring already carries the 4px spread; prefixing it produced an
+         invalid box-shadow that the browser dropped. */
+      box-shadow: var(--focus-ring);
     }
     .item-card.added {
       border-color: var(--success);
@@ -590,11 +672,13 @@
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: var(--space-3);
+      gap: var(--space-2) var(--space-3);
+      flex-wrap: wrap;
     }
     .alloc-veg-name {
       font-weight: 700;
       color: var(--fg);
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -707,6 +791,7 @@
       display: flex;
       gap: var(--space-2);
       align-items: stretch;
+      flex-wrap: wrap;
       margin-top: var(--space-2);
     }
     .qa-row .qa-unit {
@@ -724,15 +809,15 @@
       white-space: nowrap;
     }
     .qa-row input {
-      width: 78px;
-      min-height: 42px;
+      width: 76px;
+      min-height: 44px;
       padding: 0 var(--space-3);
       background: rgba(16, 32, 51, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.4);
       color: #fff;
       border-radius: var(--radius-sm);
       backdrop-filter: blur(6px);
-      font-size: var(--text-sm);
+      font-size: max(16px, var(--text-sm));
       cursor: text;
     }
     .qa-row input::placeholder {
@@ -748,7 +833,7 @@
       flex: none;
     }
     .qa-rate-wrap input {
-      width: 92px;
+      width: 84px;
       padding-left: calc(var(--space-3) + 1.2em);
     }
     .qa-rate-wrap .qa-rupee {
@@ -767,7 +852,7 @@
       flex: none;
     }
     .qa-qty-wrap input {
-      width: 88px;
+      width: 80px;
       padding-right: calc(var(--space-3) + 2.2em);
     }
     .qa-qty-wrap .qa-uqty {
@@ -788,14 +873,16 @@
       display: none;
     }
     .qa-row .btn {
-      flex: 1;
-      min-height: 42px;
-      font-size: var(--text-sm);
+      flex: 1 1 96px;
+      min-width: 96px;
+      min-height: 44px;
+      padding-inline: var(--space-3);
+      font-size: max(16px, var(--text-sm));
       white-space: nowrap;
     }
     .item-card-footer {
       margin-top: var(--space-2);
-      padding-top: var(--space-3);
+      padding: var(--space-3) var(--space-4) var(--space-4);
       border-top: 1px solid rgba(255, 255, 255, 0.22);
       font-size: var(--text-xs);
       color: rgba(255, 255, 255, 0.75);
@@ -836,12 +923,36 @@
     select,
     textarea {
       width: 100%;
-      min-height: 46px;
+      min-height: 48px;
       padding: 0 var(--space-4);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface);
       color: var(--fg);
+      /* >=16px stops iOS zoom-on-focus for number/date fields too */
+      font-size: max(16px, var(--text-base));
+      line-height: 1.2;
+    }
+    input[type="number"],
+    input[type="date"],
+    input[type="time"] {
+      min-height: 48px;
+      font-size: max(16px, var(--text-base));
+      padding-block: var(--space-2);
+    }
+    textarea {
+      padding-block: var(--space-3);
+    }
+    /* Checkboxes/radios are not text fields — keep them small and square. */
+    input[type="checkbox"],
+    input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      flex: 0 0 auto;
+      padding: 0;
+      accent-color: var(--accent);
     }
     input:focus,
     select:focus,
@@ -849,6 +960,37 @@
       outline: none;
       box-shadow: var(--focus-ring);
       border-color: var(--accent);
+    }
+    /* ---- Focus visibility for the remaining interactive surfaces ---- */
+    /* Clickable rows and list buttons are not .btn, so they need the ring too. */
+    .alloc-veg-row:focus-visible,
+    .list-row[onclick]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    /* Bare <button>s (.auth-link, .auth-eye, .overlay-close, .filter-chip …)
+       would otherwise fall back to the UA's 1px auto outline. */
+    button:not(.btn):focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    /* Anchors: skip .btn and .item-card, which already draw their own ring. */
+    a:not(.btn):not(.item-card):focus-visible,
+    .bottom-nav a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    /* .modal and .item-card clip their overflow, so the shared box-shadow ring
+       would be sliced off at their edges. An outline drawn inside the padding
+       survives the clip. (.card does not clip, so it keeps the soft ring.) */
+    .modal input:focus-visible,
+    .modal select:focus-visible,
+    .modal textarea:focus-visible,
+    .modal .btn:focus-visible,
+    .item-card .btn:focus-visible {
+      box-shadow: none;
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
     .field-error {
       color: var(--danger);
@@ -949,31 +1091,52 @@
 
     /* ========== Metric ========== */
     .metric {
-      padding: var(--space-5);
-      border-right: 1px solid var(--border-soft);
-    }
-    .metric:last-child {
-      border-right: 0;
+      min-width: 0;
+      padding: var(--space-4);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--elev-glass-lit);
     }
     .metric strong {
       display: block;
       font-family: var(--font-display);
-      font-size: var(--text-2xl);
+      font-size: var(--text-metric);
       line-height: var(--leading-tight);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
     }
     .metric span {
+      display: block;
+      margin-top: var(--space-1);
       color: var(--muted);
-      font-size: var(--text-sm);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
     }
     .metric.green strong { color: var(--success); }
     .metric.red strong { color: var(--danger); }
     .metric-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-4);
+      gap: var(--space-3);
     }
     @media (min-width: 640px) {
+      :root { --text-metric: clamp(20px, 2.4vw, 30px); }
       .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    /* An odd trailing metric takes the full row instead of leaving a gap. */
+    .metric-grid > .metric:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+    @media (min-width: 640px) {
+      .metric-grid > .metric:last-child:nth-child(odd) { grid-column: auto; }
+    }
+    /* Empty "—" placeholder cards on Home collapse instead of showing blanks. */
+    #homeTodayCards .metric:has(> span:empty) { display: none; }
+    #homeTodayCards:has(.metric > span:empty) .metric:not(:has(> span:empty)) {
+      grid-column: 1 / -1;
     }
 
     /* ========== Progress Bar ========== */
@@ -1009,11 +1172,17 @@
       color: var(--muted);
       font-size: var(--text-sm);
       display: block;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
     .list-row .value {
       font-weight: 700;
-      white-space: nowrap;
       color: var(--fg);
+      /* Wrap instead of widening the row: a long institution name or a huge
+         ₹ figure must never push the layout past the viewport. */
+      white-space: normal;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
     .list-row.flush {
       padding-inline: var(--space-5);
@@ -1091,24 +1260,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) max(var(--space-4), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
       z-index: 150;
       opacity: 0;
       pointer-events: none;
-      transition: opacity var(--motion-fast) var(--ease-standard);
+      /* Closed overlays must also leave the accessibility tree and the tab order —
+         opacity alone leaves their buttons keyboard-focusable behind the screen. */
+      visibility: hidden;
+      transition: opacity var(--motion-fast) var(--ease-standard), visibility 0s linear var(--motion-fast);
     }
     .overlay.open {
       opacity: 1;
       pointer-events: auto;
+      visibility: visible;
+      transition: opacity var(--motion-fast) var(--ease-standard), visibility 0s;
     }
     .modal {
       background: var(--surface);
       backdrop-filter: blur(20px) saturate(180%);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      width: 92vw;
+      width: 100%;
       max-width: 420px;
-      max-height: 85vh;
-      overflow-y: auto;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       transform: scale(0.95);
       transition: transform var(--motion-fast) var(--ease-standard);
       box-shadow: var(--elev-raised), var(--elev-glass-lit);
@@ -1117,21 +1294,38 @@
       transform: scale(1);
     }
     .modal-head {
+      flex: 0 0 auto;
       padding: var(--space-5);
       border-bottom: 1px solid var(--border-soft);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: var(--space-3);
     }
     .modal-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       padding: var(--space-5);
     }
     .modal-foot {
+      flex: 0 0 auto;
+      position: sticky;
+      bottom: 0;
       padding: var(--space-5);
       padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom));
       border-top: 1px solid var(--border-soft);
+      background: var(--surface);
+      backdrop-filter: blur(16px) saturate(180%);
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-3);
+    }
+    .modal-foot .btn {
+      flex: 1 1 auto;
+      min-width: 44px;
     }
     .overlay-close {
       background: none;
@@ -1139,8 +1333,10 @@
       color: var(--muted);
       font-size: var(--text-lg);
       cursor: pointer;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
       padding: 0;
       border-radius: var(--radius-pill);
       display: inline-flex;
@@ -1158,7 +1354,8 @@
       position: fixed;
       inset: 0 auto 0 0;
       width: 100vw;
-      max-height: 85vh;
+      max-height: calc(100vh - var(--app-bar-h));
+      max-height: calc(100dvh - var(--app-bar-h));
       background: var(--surface);
       backdrop-filter: blur(20px) saturate(180%);
       border-top: 1px solid var(--border);
@@ -1194,11 +1391,16 @@
       padding: var(--space-5);
     }
     .bs-foot {
+      flex: 0 0 auto;
       padding: var(--space-5);
       padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom));
       border-top: 1px solid var(--border-soft);
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-3);
+    }
+    .bs-foot .btn {
+      flex: 1 1 auto;
     }
 
     /* ========== Skeleton ========== */
@@ -1403,9 +1605,42 @@
     .auth-check input {
       width: 18px;
       height: 18px;
-      min-height: 0;
+      min-width: 18px;
+      min-height: 18px;
       padding: 0;
       accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* ========== Checkbox / Radio tap targets ==========
+       The painted control stays 20×20 (18×18 for .auth-check); the wrapping
+       label becomes the hit area so every toggle clears the 44px minimum. */
+    label:has(> input[type="checkbox"]),
+    label:has(> input[type="radio"]) {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      gap: var(--space-2);
+      cursor: pointer;
+      margin: 0;
+    }
+    /* The label's own padding widens the vertical target without shifting
+       the text baseline or changing the box's painted size. */
+    .auth-check {
+      min-height: 44px;
+      padding-block: var(--space-1);
+    }
+    /* Bare toggles with no wrapping <label> (e.g. the item-form "Active"
+       switch) can't grow their own hit box — a native checkbox ignores
+       author padding — so give the row the 44px height and the control a
+       pointer cursor. */
+    .row:has(> input[type="checkbox"]),
+    .row:has(> input[type="radio"]) {
+      min-height: 44px;
+      align-items: center;
+    }
+    input[type="checkbox"],
+    input[type="radio"] {
       cursor: pointer;
     }
     .auth-link {
@@ -1572,6 +1807,111 @@
       font-size: var(--text-xs);
     }
 
+    /* ========== Interaction hardening (touch targets, wrapping, overflow) ========== */
+    .list-row {
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .list-row > .main {
+      flex: 1 1 128px;
+      min-width: 0;
+    }
+    .list-row > .value {
+      flex: 0 1 auto;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+    .list-row > .badge {
+      flex: 0 0 auto;
+    }
+    /* Trailing button groups stay on the row; they wrap inside themselves. */
+    .list-row > .row,
+    .list-row > .actions {
+      flex: 0 1 auto;
+      margin-left: auto;
+      justify-content: flex-end;
+    }
+    .list-row > .row .btn,
+    .list-row > .actions .btn {
+      flex: 0 0 auto;
+    }
+
+    /* Inline mini buttons keep their small look but a 44px hit area. */
+    .btn {
+      min-width: 44px;
+    }
+    .list-row .btn,
+    .list-row .actions .btn {
+      min-height: 44px;
+      padding-inline: var(--space-3);
+    }
+    .auth-eye {
+      min-height: 44px;
+    }
+    /* Inventory ⋯ overrides min-width inline — scope it back up. */
+    #invList .btn[aria-label="Lot actions"] {
+      min-width: 44px !important;
+      min-height: 44px;
+    }
+
+    /* Allocation rows: no fixed 150px indent, everything wraps at 360px. */
+    #allocList .list-row {
+      flex-wrap: wrap;
+      row-gap: var(--space-2);
+    }
+    #allocList .list-row > .main {
+      flex: 1 1 100%;
+    }
+    #allocList .list-row > div:not(.main) {
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      padding-left: 0 !important;
+    }
+    /* Sub-rows (tender picker, rejected qty) get a small indent, not 150px. */
+    #allocList .list-row > div:nth-child(n + 3) {
+      padding-left: var(--space-4) !important;
+      flex: 1 1 100%;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    #allocList .list-row input {
+      width: auto !important;
+      flex: 1 1 84px;
+      min-width: 0;
+      max-width: 140px;
+    }
+    /* Sub-row fields are fixed-width so the label and action stay on one line. */
+    #allocList .list-row > div:nth-child(n + 3) > input {
+      flex: 0 0 auto;
+      width: 92px !important;
+      max-width: none;
+      padding-inline: var(--space-2);
+    }
+    #allocList .list-row > div:nth-child(n + 3) > span {
+      flex: 1 1 56px;
+      min-width: 0;
+      line-height: 1.25;
+    }
+    #allocList .list-row > div:nth-child(n + 3) > .btn {
+      flex: 0 0 auto;
+    }
+    #allocList .list-row [data-pct],
+    #allocList .list-row [data-rev] {
+      flex: 0 0 auto;
+    }
+
+    /* Qty + unit + unit-toggle share one line instead of stacking. */
+    #screen-item-detail .row > #inpQty {
+      flex: 1 1 110px;
+      width: auto;
+      min-width: 0;
+    }
+    #screen-item-detail .row > #btnPurchaseUnit {
+      flex: 0 0 auto;
+    }
+
     /* ========== Reduced Motion ========== */
     @media (prefers-reduced-motion: reduce) {
       *,
@@ -1581,6 +1921,18 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+      }
+      /* Overlay/modal animate opacity + transform; both land instantly. */
+      .overlay,
+      .overlay.open,
+      .modal,
+      .overlay.open .modal {
+        transition: none !important;
+        transform: none;
+      }
+      /* Press feedback is a transform too — drop it rather than snap it. */
+      .item-card:active {
+        transform: none;
       }
     }
   </style>
@@ -1712,7 +2064,7 @@
           <p class="lead mt-4" style="max-width: 280px;">Every institution's fixed tender rate is known at allocation time, so margins are protected from the first bag.</p>
         </div>
         <div class="actions mt-8" style="display: flex; gap: var(--space-3);">
-          <button class="btn btn-secondary" id="btnWelcomeSkip">Skip</button>
+          <button class="btn btn-secondary" id="btnWelcomeSkip">Skip intro</button>
           <button class="btn btn-primary" id="btnWelcomeNext">Next</button>
         </div>
       </div>
@@ -2157,7 +2509,7 @@
     <div class="container">
       <section>
         <div class="stack">
-          <p class="eyebrow">Today's Cart · <span id="cartDate">20 Oct 2026</span></p>
+          <p class="eyebrow">Today's Cart · <span id="cartDate">—</span></p>
           <h1>TODAY'S CART</h1>
           <p class="lead">Edit items freely — totals update instantly.</p>
         </div>
@@ -2175,15 +2527,15 @@
           <!-- cart lines injected -->
         </div>
 
-        <div class="card mt-6">
+        <div class="card mt-6 cart-totals-card">
           <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
             <div class="row between">
               <div><strong>Total Quantity</strong></div>
-              <div class="value" id="cartTotalQty" style="font-variant-numeric: tabular-nums;">1,200 kg</div>
+              <div class="value" id="cartTotalQty" style="font-variant-numeric: tabular-nums;">0</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Total Investment</strong></div>
-              <div class="value" id="cartTotalInv" style="font-variant-numeric: tabular-nums;">₹34,000</div>
+              <div class="value" id="cartTotalInv" style="font-variant-numeric: tabular-nums;">₹0</div>
             </div>
           </div>
           <div class="actions mt-4" style="padding: 0 var(--space-5) var(--space-5); display: flex; gap: var(--space-3);">
@@ -2297,7 +2649,7 @@
           <div style="padding: var(--space-5); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
             <div class="row between">
               <div><strong>Total Investment (New Purchase)</strong></div>
-              <div class="value" id="revNewPurchase" style="font-variant-numeric: tabular-nums;">₹34,000</div>
+              <div class="value" id="revNewPurchase" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Inventory Used Cost</strong></div>
@@ -2305,23 +2657,23 @@
             </div>
             <div class="row between mt-2">
               <div><strong>Additional Expenses</strong></div>
-              <div class="value" id="revExpenses" style="font-variant-numeric: tabular-nums;">₹3,000</div>
+              <div class="value" id="revExpenses" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Total Cost</strong></div>
-              <div class="value bold" id="revTotalCost" style="font-variant-numeric: tabular-nums;">₹37,000</div>
+              <div class="value bold" id="revTotalCost" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Expected Revenue</strong></div>
-              <div class="value" id="revRevenue" style="font-variant-numeric: tabular-nums;">₹43,500</div>
+              <div class="value" id="revRevenue" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Expected Profit</strong></div>
-              <div class="value profit" id="revProfit" style="font-variant-numeric: tabular-nums;">+₹6,500</div>
+              <div class="value profit" id="revProfit" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
             <div class="row between mt-2">
               <div><strong>Profit Margin</strong></div>
-              <div class="value" id="revMargin" style="font-variant-numeric: tabular-nums;">14.94%</div>
+              <div class="value" id="revMargin" style="font-variant-numeric: tabular-nums;">—</div>
             </div>
           </div>
         </div>
@@ -2349,15 +2701,15 @@
             <div style="padding: var(--space-5);">
               <div class="list-row">
                 <div class="main"><div class="value">Total Investment</div><div class="sub">New purchase + inventory used</div></div>
-                <div class="value" id="confInvestment">₹37,000</div>
+                <div class="value" id="confInvestment">—</div>
               </div>
               <div class="list-row">
                 <div class="main"><div class="value">Expected Revenue</div><div class="sub">Institution supplies</div></div>
-                <div class="value" id="confRevenue">₹43,500</div>
+                <div class="value" id="confRevenue">—</div>
               </div>
               <div class="list-row">
                 <div class="main"><div class="value">Expected Profit</div><div class="sub">Revenue − Total cost</div></div>
-                <div class="value profit" id="confProfit">+₹6,500</div>
+                <div class="value profit" id="confProfit">—</div>
               </div>
             </div>
           </div>
@@ -2377,7 +2729,7 @@
   <section class="screen" id="screen-completed">
     <div class="container">
       <section>
-        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 72px;">
+        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
           <div style="width: 80px; height: 80px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
             <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 36px; height: 36px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
@@ -2607,9 +2959,9 @@
           <div style="padding: var(--space-5); border-bottom: 1px solid var(--border-soft);">
             <p class="eyebrow">Pending Split</p>
             <div class="metric-grid">
-              <div class="metric"><strong>Total Pending</strong><span>₹36,500</span></div>
-              <div class="metric"><strong>Billed Pending</strong><span>₹5,550</span></div>
-              <div class="metric"><strong>Unbilled (Accrued)</strong><span>₹30,950</span></div>
+              <div class="metric"><strong id="duesTotal">—</strong><span>Total Pending</span></div>
+              <div class="metric"><strong id="duesBilled">—</strong><span>Billed Pending</span></div>
+              <div class="metric"><strong id="duesAccrued">—</strong><span>Unbilled (Accrued)</span></div>
             </div>
           </div>
         </div>
@@ -2633,10 +2985,10 @@
           <p class="lead">Rejected, remaining, and reusable stock.</p>
         </div>
         <div class="metric-grid mt-4">
-          <div class="metric"><strong id="invTotalQty">50 kg</strong><span>Available</span></div>
-          <div class="metric"><strong id="invTotalValue">₹1,500</strong><span>Stock Value</span></div>
-          <div class="metric"><strong id="invItemCount">1</strong><span>Items</span></div>
-          <div class="metric"><strong id="invAttention">1</strong><span>Need Attention</span></div>
+          <div class="metric"><strong id="invTotalQty">—</strong><span>Available</span></div>
+          <div class="metric"><strong id="invTotalValue">—</strong><span>Stock Value</span></div>
+          <div class="metric"><strong id="invItemCount">—</strong><span>Items</span></div>
+          <div class="metric"><strong id="invAttention">—</strong><span>Need Attention</span></div>
         </div>
         <div class="row wrap mt-4" style="gap: var(--space-2);">
           <button class="btn btn-secondary" id="invFiltAll">All</button>
@@ -2667,11 +3019,11 @@
         </div>
         <div class="card mt-6">
           <div style="padding: var(--space-5);">
-            <div class="list-row"><div class="main"><div class="value">Available</div><div class="sub">Quantity on hand</div></div><div class="value" id="invDetAvail" style="font-variant-numeric: tabular-nums;">50 kg</div></div>
-            <div class="list-row"><div class="main"><div class="value">Original Cost</div><div class="sub">₹ per base unit</div></div><div class="value" id="invDetCost" style="font-variant-numeric: tabular-nums;">₹30/kg</div></div>
-            <div class="list-row"><div class="main"><div class="value">Stock Value</div><div class="sub">Available × original rate</div></div><div class="value" id="invDetValue" style="font-variant-numeric: tabular-nums;">₹1,500</div></div>
-            <div class="list-row"><div class="main"><div class="value">Source</div><div class="sub">Where this lot came from</div></div><div class="value" id="invDetSource">Institution A — Rejected</div></div>
-            <div class="list-row"><div class="main"><div class="value">Age</div><div class="sub">Days since added</div></div><div class="value" id="invDetAge">1 day</div></div>
+            <div class="list-row"><div class="main"><div class="value">Available</div><div class="sub">Quantity on hand</div></div><div class="value" id="invDetAvail" style="font-variant-numeric: tabular-nums;">—</div></div>
+            <div class="list-row"><div class="main"><div class="value">Original Cost</div><div class="sub">₹ per base unit</div></div><div class="value" id="invDetCost" style="font-variant-numeric: tabular-nums;">—</div></div>
+            <div class="list-row"><div class="main"><div class="value">Stock Value</div><div class="sub">Available × original rate</div></div><div class="value" id="invDetValue" style="font-variant-numeric: tabular-nums;">—</div></div>
+            <div class="list-row"><div class="main"><div class="value">Source</div><div class="sub">Where this lot came from</div></div><div class="value" id="invDetSource">—</div></div>
+            <div class="list-row"><div class="main"><div class="value">Age</div><div class="sub">Days since added</div></div><div class="value" id="invDetAge">—</div></div>
             <div class="list-row"><div class="main"><div class="value">Status</div><div class="sub">Lot lifecycle state</div></div><div class="value badge badge-green" id="invDetStatus">Available</div></div>
           </div>
         </div>
@@ -2739,8 +3091,10 @@
         </div>
         <div class="row wrap mt-4" style="gap: var(--space-2);">
           <button class="btn btn-secondary" id="histFiltToday">Today</button>
+          <button class="btn btn-secondary" id="histFiltYesterday">Yesterday</button>
           <button class="btn btn-secondary" id="histFilt7d">Last 7 Days</button>
           <button class="btn btn-secondary" id="histFiltMonth">This Month</button>
+          <button class="btn btn-secondary" id="histFiltPrev">Previous Month</button>
           <button class="btn btn-secondary" id="histFiltCustom">Custom Range</button>
           <button class="btn btn-primary" id="btnHistAdd" style="margin-left: auto;">+ Add Entry</button>
         </div>
@@ -2761,7 +3115,7 @@
         <div class="stack">
           <p class="eyebrow">History &gt; Transaction</p>
           <h1 id="trxTitle">TRX-20261020</h1>
-          <p class="lead" id="trxSub">Frozen snapshot — 20 Oct 2026 · R1</p>
+          <p class="lead" id="trxSub">—</p>
         </div>
         <div id="trxTabs" class="row wrap mt-4" style="gap: var(--space-2); overflow-x: auto;">
           <!-- tabs injected -->
@@ -2807,11 +3161,11 @@
           <h1>P&L Dashboard</h1>
           <p class="lead">Transaction-based profit — never mixed with cash.</p>
         </div>
-        <div class="metric-grid mt-4">
-          <div class="metric"><strong>₹5,00,000</strong><span>Total Investment</span></div>
-          <div class="metric"><strong>₹6,20,000</strong><span>Total Revenue</span></div>
-          <div class="metric"><strong>₹40,000</strong><span>Total Expenses</span></div>
-          <div class="metric green"><strong>+₹80,000</strong><span>Overall Profit</span></div>
+        <div class="metric-grid mt-4" id="plMetrics">
+          <div class="metric"><strong>—</strong><span>Total Investment</span></div>
+          <div class="metric"><strong>—</strong><span>Effective Revenue</span></div>
+          <div class="metric"><strong>—</strong><span>Deductions</span></div>
+          <div class="metric"><strong>—</strong><span>Overall Profit</span></div>
         </div>
         <div class="row wrap mt-4" style="gap: var(--space-2);">
           <button class="btn btn-secondary" id="plTabOverall">Overall</button>
@@ -2859,7 +3213,7 @@
         <div class="stack">
           <p class="eyebrow">Reports &gt; Detail</p>
           <h1 id="rptDetTitle">Report Detail</h1>
-          <p class="lead" id="rptDetSub">Structured summary — export as PDF/CSV.</p>
+          <p class="lead" id="rptDetSub">Structured summary — export as CSV.</p>
         </div>
         <div id="rptDetContent" class="mt-6">
           <!-- injected -->
@@ -3067,7 +3421,7 @@
   <section class="screen" id="screen-about">
     <div class="container">
       <section>
-        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 72px;">
+        <div class="stack" style="min-height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
           <div style="width: 64px; height: 64px; background: var(--accent); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6); box-shadow: var(--elev-raised);">
             <svg class="icon" viewBox="0 0 24 24" style="color: #fff; width: 32px; height: 32px;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 110-4 2 2 0 000 4z"></path></svg>
           </div>
@@ -3169,7 +3523,7 @@
           <div class="list-row" onclick="navigate('#screen-payables')" style="cursor:pointer;"><div class="main"><div class="value">Seller Payables</div><div class="sub">Mandi seller credit &amp; settlements</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-pl')" style="cursor:pointer;"><div class="main"><div class="value">Profit &amp; Loss</div><div class="sub">Overall, institution, contract, vegetable</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-history')" style="cursor:pointer;"><div class="main"><div class="value">History</div><div class="sub">Transactions &amp; other day entries</div></div><span class="badge badge-gray">→</span></div>
-          <div class="list-row" onclick="navigate('#screen-reports')" style="cursor:pointer;"><div class="main"><div class="value">Reports</div><div class="sub">14 report types · Export PDF/CSV</div></div><span class="badge badge-gray">→</span></div>
+          <div class="list-row" onclick="navigate('#screen-reports')" style="cursor:pointer;"><div class="main"><div class="value">Reports</div><div class="sub">14 report types · Export CSV</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-settings')" style="cursor:pointer;"><div class="main"><div class="value">Settings</div><div class="sub">Business, items, app, data</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" onclick="navigate('#screen-whats-new')" style="cursor:pointer;"><div class="main"><div class="value">What's New <span class="badge badge-blue" id="moreUpdateBadge" style="font-size: var(--text-xs); padding: 2px 6px; margin-left: 6px;">v2.1</span></div><div class="sub">Update message &amp; release notes</div></div><span class="badge badge-gray">→</span></div>
           <div class="list-row" id="moreSignOut" style="cursor:pointer; margin-top: var(--space-4);"><div class="main"><div class="value" style="color: var(--danger);">Sign out</div><div class="sub">Lock this ledger on this device</div></div><span class="badge badge-gray">→</span></div>
@@ -3184,12 +3538,26 @@
     const AUTH_KEY = 'vegContractorAuthV1';
     const DEMO_PHONE = '9876543210';
     const DEMO_PIN = '1234';
-    const TODAY = '2026-10-21';
+    /* The ledger is date-anchored to the device clock. Seed data is generated
+       relative to TODAY so a fresh install always opens on a live, consistent day
+       (yesterday's supply is still inside the correction window). */
+    function todayISO() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    /* Local-date formatter — never use toISOString() for calendar dates: at UTC+5:30
+       local midnight is the previous day in UTC and would shift every date by one. */
+    function toISO(dt) {
+      return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    }
+    const TODAY = todayISO();
+    const MONTH_START = TODAY.slice(0, 7) + '-01';
+    const MONTH_END = (() => { const d = new Date(TODAY + 'T00:00:00'); d.setMonth(d.getMonth() + 1, 0); return toISO(d); })();
 
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => Array.from(document.querySelectorAll(s));
 
-    function addDays(d, n) { const dt = new Date(d + 'T00:00:00'); dt.setDate(dt.getDate() + n); return dt.toISOString().slice(0, 10); }
+    function addDays(d, n) { const dt = new Date(d + 'T00:00:00'); dt.setDate(dt.getDate() + n); return toISO(dt); }
     function daysBetween(a, b) { if (!a || !b) return 0; return Math.round((Date.parse(b + 'T00:00:00') - Date.parse(a + 'T00:00:00')) / 86400000); }
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     function fmtDate(d) { if (!d) return '—'; const dt = new Date(d + 'T00:00:00'); return dt.getDate() + ' ' + MONTHS[dt.getMonth()] + ' ' + dt.getFullYear(); }
@@ -3234,6 +3602,11 @@
     };
 
     function seedState() {
+      /* Relative dates keep the demo coherent on any real calendar day:
+         yesterday = the last completed supply, today = a fresh ledger day. */
+      const Y = addDays(TODAY, -1);
+      const TRX_ID = 'TRX-' + Y.replace(/-/g, '');
+      const Y_LABEL = fmtDateShort(Y);
       return {
         v: 2, setupDone: false, businessName: '', currency: '₹', defaultUnit: 'kg',
         seq: { trx: 1, inst: 3, item: 16, lot: 2, pay: 1, bill: 1, paym: 1, entry: 1, line: 0, exp: 0 },
@@ -3258,26 +3631,26 @@
         institutions: [
           {
             id: 'instA', name: 'Institution A', contact: 'Mr. Sharma', phone: '9876543210', address: 'Market Yard, APMC', location: 'Mumbai',
-            tenders: [{ id: 'tA1', name: 'Tender 1', number: 'TND-A-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+            tenders: [{ id: 'tA1', name: 'Tender 1', number: 'TND-A-2026', start: MONTH_START, end: MONTH_END, paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
             fixedPrices: { tA1: [{ itemId: 'i1', rate: 40 }, { itemId: 'i2', rate: 35 }, { itemId: 'i3', rate: 38 }] }, active: true
           },
           {
             id: 'instB', name: 'Institution B', contact: 'Ms. Rao', phone: '9876543211', address: 'Wholesale Market', location: 'Pune',
-            tenders: [{ id: 'tB1', name: 'Tender 1', number: 'TND-B-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+            tenders: [{ id: 'tB1', name: 'Tender 1', number: 'TND-B-2026', start: MONTH_START, end: MONTH_END, paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
             fixedPrices: { tB1: [{ itemId: 'i1', rate: 45 }, { itemId: 'i2', rate: 32 }, { itemId: 'i3', rate: 40 }] }, active: true
           },
           {
             id: 'instC', name: 'Institution C', contact: 'Mr. Patel', phone: '9876543212', address: 'Mandi Road', location: 'Nagpur',
-            tenders: [{ id: 'tC1', name: 'Tender 1', number: 'TND-C-2026', start: '2026-10-01', end: '2026-10-31', paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
+            tenders: [{ id: 'tC1', name: 'Tender 1', number: 'TND-C-2026', start: MONTH_START, end: MONTH_END, paymentTerms: 'Paid after tender period ends', overdueAlertDays: 7, demandedQty: {} }],
             fixedPrices: { tC1: [{ itemId: 'i1', rate: 38 }, { itemId: 'i2', rate: 36 }, { itemId: 'i3', rate: 35 }] }, active: true
           }
         ],
         cart: { date: TODAY, mode: 'day', correctionTrxId: null, items: [], allocations: {}, remaining: {}, rejected: {}, expenses: [], confirmed: false },
         transactions: [
           {
-            id: 'TRX-20261020', date: '2026-10-20', status: 'confirmed', revision: 'R1', day: 'Cart — Full Day',
+            id: TRX_ID, date: Y, status: 'confirmed', revision: 'R1', day: 'Cart — Full Day',
             items: [
-              { itemId: 'i1', qty: 500, rate: 30, cost: 15000, source: 'Mandi', quality: '', seller: 'Sardar Agro', payment: 'on-credit', dueDate: '2026-10-23' },
+              { itemId: 'i1', qty: 500, rate: 30, cost: 15000, source: 'Mandi', quality: '', seller: 'Sardar Agro', payment: 'on-credit', dueDate: addDays(Y, 7) },
               { itemId: 'i2', qty: 400, rate: 25, cost: 10000, source: 'Mandi', quality: '', seller: '', payment: 'paid-now', dueDate: '' },
               { itemId: 'i3', qty: 300, rate: 30, cost: 9000, source: 'Mandi', quality: '', seller: '', payment: 'paid-now', dueDate: '' }
             ],
@@ -3304,25 +3677,25 @@
           }
         ],
         inventory: [
-          { id: 'lot1', itemId: 'i1', qty: 50, originalRate: 30, status: 'Available', source: 'Remaining — 20 Oct', dateAdded: '2026-10-20', movements: [{ date: '2026-10-20', qty: 50, source: 'Day remaining (TRX-20261020)' }] },
-          { id: 'lot2', itemId: 'i11', qty: 5, originalRate: 20, status: 'Available', source: 'Opening stock', dateAdded: '2026-10-14', movements: [{ date: '2026-10-14', qty: 5, source: 'Opening stock' }] }
+          { id: 'lot1', itemId: 'i1', qty: 50, originalRate: 30, status: 'Available', source: 'Remaining — ' + Y_LABEL, dateAdded: Y, movements: [{ date: Y, qty: 50, source: 'Day remaining (' + TRX_ID + ')' }] },
+          { id: 'lot2', itemId: 'i11', qty: 5, originalRate: 20, status: 'Available', source: 'Opening stock', dateAdded: addDays(TODAY, -8), movements: [{ date: addDays(TODAY, -8), qty: 5, source: 'Opening stock' }] }
         ],
         payables: [
-          { id: 'pay1', trxId: 'TRX-20261020', itemId: 'i1', seller: 'Sardar Agro', amount: 15000, remaining: 8000, dueDate: '2026-10-23', date: '2026-10-20', status: 'open', settlements: [{ date: '2026-10-20', amount: 7000, note: 'Advance on delivery' }] }
+          { id: 'pay1', trxId: TRX_ID, itemId: 'i1', seller: 'Sardar Agro', amount: 15000, remaining: 8000, dueDate: addDays(TODAY, 2), date: Y, status: 'open', settlements: [{ date: Y, amount: 7000, note: 'Advance on delivery' }] }
         ],
         bills: [
-          { id: 'billA1', instId: 'instA', number: 'BILL-001', date: '2026-10-21', periodStart: '2026-10-01', periodEnd: '2026-10-31', trxIds: ['TRX-20261020'], gross: 17050, deductions: [{ date: '2026-10-21', reason: 'Quantity/short weight', amount: 500, note: '' }], net: 16550 }
+          { id: 'billA1', instId: 'instA', number: 'BILL-001', date: TODAY, periodStart: MONTH_START, periodEnd: MONTH_END, trxIds: [TRX_ID], gross: 17050, deductions: [{ date: TODAY, reason: 'Quantity/short weight', amount: 500, note: '' }], net: 16550 }
         ],
         payments: [
-          { id: 'rcp1', instId: 'instA', date: '2026-10-21', amount: 11000, method: 'Cash', against: 'billA1', note: '' }
+          { id: 'rcp1', instId: 'instA', date: TODAY, amount: 11000, method: 'Cash', against: 'billA1', note: '', allocations: [{ billId: 'billA1', amount: 11000 }] }
         ],
         dedPending: [],
         dayEntries: [
-          { id: 'de1', date: '2026-10-20', type: 'settlement', seller: 'Sardar Agro', amount: 7000, payableId: 'pay1', note: 'Advance on delivery' }
+          { id: 'de1', date: Y, type: 'settlement', seller: 'Sardar Agro', amount: 7000, payableId: 'pay1', note: 'Advance on delivery' }
         ],
-        lastRates: { i1: { rate: 30, date: '2026-10-20' }, i2: { rate: 25, date: '2026-10-20' }, i3: { rate: 30, date: '2026-10-20' } },
+        lastRates: { i1: { rate: 30, date: Y }, i2: { rate: 25, date: Y }, i3: { rate: 30, date: Y } },
         settings: {
-          overdueAlertDays: 7, longPendingDays: 30, tenderEndingDays: 7, sellerPayableDays: 3, backupInterval: 7,
+          overdueAlertDays: 7, shelfLifeDefault: 7, longPendingDays: 30, tenderEndingDays: 7, sellerPayableDays: 3, backupInterval: 7,
           expenseCategories: ['Transport', 'Labour', 'Loading', 'Unloading', 'Packaging', 'Other'],
           reasons: ['Quality', 'Damage', 'Quantity/short weight', 'Return', 'Spoiled', 'Other']
         },
@@ -3378,10 +3751,19 @@
       s.inventory = s.inventory.map(l => Object.assign({ qty: 0, originalRate: 0, status: 'Available', source: '', dateAdded: TODAY, movements: [] }, obj(l)));
       s.bills = s.bills.map(b => Object.assign({ deductions: [] }, obj(b)));
       s.payables = s.payables.map(p => Object.assign({ settlements: [] }, obj(p)));
+      /* Payments: one receipt row per payment. Older saves (and the seeded receipt)
+         recorded the target bill in `against` with no allocation list — derive one so
+         dues and bill ageing read a single, unambiguous source of truth. */
+      s.payments = arr(s.payments).map(p => {
+        const po = obj(p);
+        if (!Array.isArray(po.allocations)) po.allocations = (po.against && !po.creditBalance) ? [{ billId: po.against, amount: po.amount }] : [];
+        if (po.creditBalance === undefined) po.creditBalance = false;
+        return po;
+      });
       s.lastRates = obj(s.lastRates);
       s.seq = Object.assign({ trx: 1, inst: 3, item: 16, lot: 2, pay: 1, bill: 1, paym: 1, entry: 1, line: 0, exp: 0 }, obj(s.seq));
       s.settings = Object.assign({
-        overdueAlertDays: 7, longPendingDays: 30, tenderEndingDays: 7, sellerPayableDays: 3, backupInterval: 7,
+        overdueAlertDays: 7, shelfLifeDefault: 7, longPendingDays: 30, tenderEndingDays: 7, sellerPayableDays: 3, backupInterval: 7,
         expenseCategories: ['Transport', 'Labour', 'Loading', 'Unloading', 'Packaging', 'Other'],
         reasons: ['Quality', 'Damage', 'Quantity/short weight', 'Return', 'Spoiled', 'Other']
       }, obj(s.settings));
@@ -3468,6 +3850,12 @@
       const keep = $('#chkKeepSigned'); if (keep) keep.checked = false;
       navigate('#screen-login');
       showToast('Signed out.');
+    }
+    function signOutAsk() {
+      openModal('Sign out?', `<p style="color:var(--fg-2);">Your ledger stays saved on this device; you\u2019ll need your mobile number and PIN to get back in.</p>`, [
+        { label: 'Cancel', cls: 'btn-secondary', onClick: () => {} },
+        { label: 'Sign out', cls: 'btn-danger', onClick: () => signOut() }
+      ]);
     }
     function forgotPinHelp() {
       openModal('Reset PIN', `<p style="color:var(--fg-2);">This prototype has no server, so there is no reset email or SMS.</p>
@@ -3577,15 +3965,24 @@
     /* ---------- Toasts ---------- */
     function showToast(msg, type = 'success') {
       const container = $('#toastContainer'); if (!container) return;
+      const same = Array.from(container.querySelectorAll('.toast')).find(t => t.textContent === msg);
+      if (same) {
+        clearTimeout(same._toastTimer);
+        same._toastTimer = setTimeout(() => { same.classList.remove('show'); setTimeout(() => same.remove(), 300); }, 2500);
+        return;
+      }
       const el = document.createElement('div'); el.className = 'toast ' + type; el.textContent = msg;
       container.appendChild(el); requestAnimationFrame(() => el.classList.add('show'));
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2500);
+      while (container.querySelectorAll('.toast').length > 3) { const old = container.querySelector('.toast'); clearTimeout(old._toastTimer); old.remove(); }
+      el._toastTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2500);
     }
 
     /* ---------- Modal system (dynamic BS-xx sheets / generic dialogs) ---------- */
     function openModal(title, body, actions, opts = {}) {
       const overlay = document.createElement('div');
       overlay.className = 'overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
       overlay.innerHTML = `
         <div class="modal">
           <div class="modal-head"><div style="font-weight:700;">${esc(title)}</div><button class="overlay-close" aria-label="Close">✕</button></div>
@@ -3600,12 +3997,25 @@
         if (btn) btn.onclick = (e) => { e.stopPropagation(); const keep = a.onClick && a.onClick(overlay); if (keep !== false && !a.keepOpen) closeModal(overlay); };
       });
       overlay.onclick = (e) => { if (e.target === overlay && !opts.locked) closeModal(overlay); };
+      /* Focus the first real input so the keyboard opens where the user expects and
+         Escape can always dismiss. */
+      const first = overlay.querySelector('.modal-body input:not([type=hidden]), .modal-body select, .modal-body textarea');
+      if (first) setTimeout(() => { try { first.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }, 60);
       return overlay;
     }
     function closeModal(overlay) {
       const el = overlay || document.querySelector('.overlay:not(.static-dl)');
       if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 280); }
     }
+    /* Escape dismisses the topmost overlay — a modal that can only be closed by
+       tapping a 44px target is a trap on desktop and with a hardware keyboard. */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const dyn = $$('.overlay.open:not(.static-dl)');
+      if (dyn.length) { closeModal(dyn[dyn.length - 1]); return; }
+      const stat = $$('.overlay.open.static-dl');
+      if (stat.length) hideDL(stat[stat.length - 1].id);
+    });
     /* ---------- DL-12 — generic pick-list sheet ---------- */
     const PICK_SOURCES = {
       expenseCategory: () => (state.settings.expenseCategories || []).map(c => ({ value: c, label: c, sub: 'Expense type' })),
@@ -3702,12 +4112,24 @@
 
     /* ========== Navigation & screen dispatch ========== */
     const screenRenderers = {};
-    function navigate(screenId) {
+    /* Real history stack. The static backMap alone sent every More-origin screen
+       (Dues, Payables, P&L, History, Reports) back to Home, so "Back" contradicted
+       where the user came from. navigate() records the previous screen; Back pops
+       it and only falls back to backMap when the stack is empty. */
+    let navStack = [];
+    const TAB_ROOTS = ['home', 'veg', 'cart', 'inventory', 'more'];
+    function navigate(screenId, opts) {
+      const options = opts || {};
+      const prevId = state.currentScreen ? '#screen-' + state.currentScreen : null;
       document.body.classList.toggle('auth-gate', screenId === '#screen-login');
       $$('.screen').forEach(s => { s.classList.remove('active'); s.classList.remove('has-sticky'); });
       const screen = $(screenId);
       if (screen) { screen.classList.add('active'); if (screen.querySelector('.btn-sticky')) screen.classList.add('has-sticky'); }
       state.currentScreen = screenId.replace('#screen-', '');
+
+      /* Tab taps and auth transitions reset the stack; everything else pushes. */
+      if (options.reset || TAB_ROOTS.includes(state.currentScreen) || screenId === '#screen-login' || screenId === '#screen-splash') navStack = [];
+      else if (prevId && prevId !== screenId) { navStack.push(prevId); if (navStack.length > 40) navStack.shift(); }
 
       $$('.bottom-nav a').forEach(t => t.classList.toggle('active', t.dataset.screen === state.currentScreen));
       const titles = {
@@ -3848,7 +4270,9 @@
     /* ========== Profile (S03) ========== */
     function profileContinue(e) {
       if (e) e.preventDefault();
-      state.businessName = gv('#inpBizName') || 'My Vegetable Business';
+      const bizName = gv('#inpBizName').trim();
+      if (!bizName) { showToast('Enter your business name to continue.', 'error'); const el = $('#inpBizName'); if (el) el.focus(); return false; }
+      state.businessName = bizName;
       const unit = gv('#inpDefaultUnit'); if (unit) state.defaultUnit = unit;
       const shelf = parseInt(gv('#inpShelfLife'), 10); if (shelf > 0) state.settings.shelfLifeDefault = shelf;
       saveState(); navigate('#screen-initial-items');
@@ -3878,8 +4302,10 @@
       ]);
     }
     function saveCustomItem() {
-      const name = gv('#ciName');
+      const name = gv('#ciName').trim();
       if (!name) { showToast('Enter an item name.', 'error'); return false; }
+      const dup = state.items.find(i => i.active && i.name.trim().toLowerCase() === name.toLowerCase());
+      if (dup) { showToast(`An item named "${dup.name}" already exists.`, 'error'); return false; }
       state.items.push({ id: nextId('item'), name, category: gv('#ciCat'), unit: gv('#ciUnit'), image: null, shelfLife: parseInt(gv('#ciShelf'), 10) || 7, active: true });
       saveState(); showToast('Item created ✓'); renderSeedItems();
     }
@@ -3913,8 +4339,10 @@
       ]);
     }
     function saveQuickInstitution() {
-      const name = gv('#iiName');
+      const name = gv('#iiName').trim();
       if (!name) { showToast('Enter institution name.', 'error'); return false; }
+      const dup = state.institutions.find(i => i.name.trim().toLowerCase() === name.toLowerCase());
+      if (dup) { showToast(`An institution named "${dup.name}" already exists.`, 'error'); return false; }
       const instNum = nextId('inst');
       const tender = {
         id: 't' + instNum + 'A', name: gv('#iiTName') || 'Tender 1', number: gv('#iiTNum') || '',
@@ -3952,7 +4380,7 @@
                 <h3 class="item-card-name">${esc(item.name)}</h3>
                 <span class="badge" style="background: color-mix(in oklab, ${catColor}, white 85%); color: ${catColor === 'var(--success)' ? '#15803d' : catColor === 'var(--meta)' ? '#1d4ed8' : '#1e3a8a'};">${esc(item.category)}</span>
               </div>
-              <p class="item-card-price">₹${formatINR(rate)} / ${esc(item.unit)}</p>
+              <p class="item-card-price">${formatINR(rate)} / ${esc(item.unit)}</p>
               ${isAdded ? `<p class="item-card-in-cart">✓ Added to Cart · ${formatQty(inCart)} ${esc(item.unit)}</p>` : ''}
               <p class="item-card-stock">${invQty > 0 ? 'Stock: ' + formatQty(invQty) + ' ' + esc(item.unit) : 'No stock'}</p>
               <div class="qa-row" onclick="event.stopPropagation()">
@@ -4060,11 +4488,14 @@
         inventory: pick.pick, invQty: r2(pick.pick.reduce((s, p) => s + p.qty, 0)), invCost: r2(pick.pick.reduce((s, p) => s + p.qty * p.rate, 0)),
         seller: '', payment: 'paid-now', dueDate: '', quality: '', source: '', createdAt: TODAY
       };
+      const existing = state.cart.items.find(l => l.itemId === it.id);
+      if (existing) { pendingCartLine = line; pendingCartQtyIn = qtyIn; duplicateItemAsk(it, existing, line); return; }
       state.cart.items.push(line);
       state.cart.allocations[it.id] = state.cart.allocations[it.id] || [];
       state.cart.remaining[it.id] = state.cart.remaining[it.id] || [];
       const sy = window.scrollY;
       saveState(); renderItemList();
+      if (qtyIn) qtyIn.value = '';
       window.scrollTo(0, sy);
       showToast(`Added ${it.name} · ${formatQty(qty)} ${it.unit} to cart ✓`);
     }
@@ -4090,10 +4521,14 @@
     function setChecked(sel, on) { const el = $(sel); if (el) el.checked = !!on; }
     function saveAddItem(e) {
       if (e) e.preventDefault();
-      const name = gv('#aiName');
+      const name = gv('#aiName').trim();
       if (!name) { showToast('Item name is required.', 'error'); return false; }
+      const dup = state.items.find(i => i.active && i.id !== editingItemId && i.name.trim().toLowerCase() === name.toLowerCase());
+      if (dup) { showToast(`An item named "${dup.name}" already exists.`, 'error'); return false; }
       const pu = gv('#aiPU');
-      const purchaseUnit = (pu && pu !== 'None') ? { label: pu, factor: parseFloat(gv('#aiPUFactor')) || 1 } : null;
+      const puFactor = parseFloat(gv('#aiPUFactor')) || 0;
+      if (pu && pu !== 'None' && puFactor <= 0) { showToast('Purchase unit factor must be greater than zero.', 'error'); return false; }
+      const purchaseUnit = (pu && pu !== 'None') ? { label: pu, factor: puFactor } : null;
       const base = { name, category: gv('#aiCat'), unit: gv('#aiUnit'), shelfLife: gv('#aiShelf') === '' ? null : (parseInt(gv('#aiShelf'), 10) || null), purchaseUnit, active: $('#aiActive')?.checked ?? true };
       if (editingItemId) { Object.assign(itemById(editingItemId) || {}, base); showToast('Item updated ✓'); }
       else { state.items.push(Object.assign({ id: nextId('item'), image: photoForName(name) }, base)); showToast(`Item "${name}" created ✓`); }
@@ -4198,10 +4633,12 @@
       pushCartLine(line, it);
     }
     let pendingCartLine = null;
+    let pendingCartQtyIn = null;
     function pushCartLine(line, it) {
       state.cart.items.push(line);
       state.cart.allocations[it.id] = state.cart.allocations[it.id] || [];
       state.cart.remaining[it.id] = state.cart.remaining[it.id] || [];
+      if (pendingCartQtyIn) { pendingCartQtyIn.value = ''; pendingCartQtyIn = null; }
       saveState(); showToast(`Added ${it.name} to cart ✓`);
       navigate('#screen-cart');
     }
@@ -4216,7 +4653,7 @@
         <div class="list-row"><div class="main"><div class="value">This entry</div><div class="sub">${fmtLine(line)}</div></div></div>
       `, [
         { label: 'Add a separate purchase line', cls: 'btn-primary', onClick: () => { const l = pendingCartLine; pendingCartLine = null; if (l) pushCartLine(l, it); } },
-        { label: 'Edit existing entry', cls: 'btn-secondary', onClick: () => { pendingCartLine = null; setTimeout(() => editCartLine(existing.id), 300); } }
+        { label: 'Edit existing entry', cls: 'btn-secondary', onClick: () => { pendingCartLine = null; pendingCartQtyIn = null; setTimeout(() => editCartLine(existing.id), 300); } }
       ]);
     }
 
@@ -4238,9 +4675,10 @@
     function cartEmpty() { return state.cart.items.length === 0; }
     function renderCart() {
       const dateEl = $('#cartDate'); if (dateEl) dateEl.textContent = state.cart.mode === 'correction' ? `${fmtDateShort(state.cart.date)} · Correction (R–next)` : fmtDateShort(TODAY);
-      showSel('#cartEmpty', cartEmpty());
-      showSel('#cartList', !cartEmpty());
-      svgHide('.cart-totals-card', !cartEmpty());
+      const empty = cartEmpty();
+      showSel('#cartEmpty', empty);
+      showSel('#cartList', !empty);
+      svgHide('.cart-totals-card', empty);
       const list = $('#cartList');
       if (list) {
         list.innerHTML = state.cart.items.map(line => {
@@ -4266,9 +4704,17 @@
         }).join('');
       }
       const s = cartSummary();
-      txt('#cartTotalQty', formatQty(s.supQty) + ' kg');
+      txt('#cartTotalQty', qtyByUnit(state.cart.items.map(l => ({ qty: lineSupply(l), unit: itemUnit(l) }))));
       txt('#cartTotalInv', formatINR(s.investment));
       updateCartIndicator();
+    }
+    /* Quantities add up only within a unit (kg ≠ litre). One helper keeps every
+       aggregate honest and renders "100 kg · 20 litre" instead of a fake total. */
+    function qtyByUnit(entries) {
+      const map = {};
+      (entries || []).forEach(e => { if (!e || !(e.qty > 0)) return; const u = e.unit || 'unit'; map[u] = r2((map[u] || 0) + e.qty); });
+      const parts = Object.keys(map).filter(u => map[u] > 0).map(u => formatQty(map[u]) + ' ' + u);
+      return parts.join(' · ') || '0';
     }
     function svgHide(sel, hide) { const el = $(sel); if (el) el.classList.toggle('hidden', hide); }
     function editCartLine(lineId) {
@@ -4303,8 +4749,16 @@
       const line = state.cart.items.find(l => l.id === id); if (!line) return false;
       const q = parseFloat(gv('#ceQty')) || 0;
       if (q <= 0) { showToast('Quantity must be positive.', 'error'); return false; }
+      const rate = parseFloat(gv('#ceRate')) || 0;
+      if (q > 0 && rate <= 0) { showToast('Rate must be positive.', 'error'); return false; }
+      const newSupply = r2(q + (line.invQty || 0));
+      const alloc = allocatedQtyOf(line.itemId), rem = remainingEntryQty(line.itemId);
+      if (newSupply < r2(alloc + rem)) {
+        showToast(`Reduce allocations first — ${formatQty(r2(alloc + rem))} ${itemIt(line.itemId)} already allocated.`, 'error');
+        return false;
+      }
       line.purchaseQty = r2(q);
-      line.rate = parseFloat(gv('#ceRate')) || 0;
+      line.rate = rate;
       line.source = gv('#ceSource');
       line.quality = gv('#ceQuality');
       line.payment = radioVal('cePay') || 'paid-now';
@@ -4322,9 +4776,24 @@
       state.removeLineId = id;
       showDL('overlay-dl1');
     }
-    function confirmRemoveLine() { hideDL('overlay-dl1'); state.cart.items = state.cart.items.filter(l => l.id !== state.removeLineId); state.removeLineId = null; saveState(); renderCart(); showToast('Line removed.'); navigate('#screen-cart'); }
+    function confirmRemoveLine() {
+      hideDL('overlay-dl1');
+      const id = state.removeLineId;
+      const line = state.cart.items.find(l => l.id === id);
+      state.cart.items = state.cart.items.filter(l => l.id !== id);
+      state.removeLineId = null;
+      if (line && !state.cart.items.some(l => l.itemId === line.itemId)) {
+        ['allocations', 'remaining', 'rejected'].forEach(k => { if (state.cart[k]) delete state.cart[k][line.itemId]; });
+      }
+      if (state.cart.items.length === 0) {
+        state.cart.expenses = [];
+        state.cart.mode = 'day';
+        state.cart.correctionTrxId = null;
+      }
+      saveState(); renderCart(); showToast('Line removed.'); navigate('#screen-cart');
+    }
     function discardCartSetup() {
-      state.cart.items = []; state.cart.allocations = {}; state.cart.remaining = {}; state.cart.expenses = [];
+      state.cart.items = []; state.cart.allocations = {}; state.cart.remaining = {}; state.cart.rejected = {}; state.cart.expenses = [];
       state.cart.mode = 'day'; state.cart.correctionTrxId = null;
       saveState(); showToast('Cart discarded.'); renderHome(); goHome();
     }
@@ -4457,8 +4926,8 @@
         const hasPrice = alloc.rate > 0 && !alloc.custom;
         const pct = agg.supply > 0 ? alloc.qty / agg.supply * 100 : 0;
         const rev = r2(effectiveAllocQty(allocItemId, inst.id) * alloc.rate);
-        const rateLabel = hasPrice ? `₹${formatINR(alloc.rate)}/${esc(it.unit)} · fixed tender` :
-          alloc.custom ? `₹${formatINR(alloc.rate)}/${esc(it.unit)} · custom` :
+        const rateLabel = hasPrice ? `${formatINR(alloc.rate)}/${esc(it.unit)} · fixed tender` :
+          alloc.custom ? `${formatINR(alloc.rate)}/${esc(it.unit)} · custom` :
           'No fixed tender price';
         const rateClick = hasPrice ? '' : `onclick="app.missingPriceFlow('${inst.id}')"`;
         // Tender picker button when multiple active tenders have price for this item
@@ -4536,9 +5005,18 @@
     function updateAllocQtyLive(itemId, instId, qty, inp) {
       let a = (state.cart.allocations[itemId] || []).find(x => x.instId === instId);
       if (!a) { const fr = fixedRate(instById(instId), itemId); a = { instId, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
-      a.qty = r2(Math.max(0, qty));
+      const it = itemById(itemId);
+      const supply = itemAgg(itemId).supply;
+      const max = r2(Math.max(0, supply - (allocatedQtyOf(itemId) - a.qty) - remainingEntryQty(itemId)));
+      let val = r2(Math.max(0, qty));
+      if (val > max) {
+        val = max;
+        if (inp) inp.value = String(val);
+        showToast(`Only ${formatQty(max)} ${it ? it.unit : ''} of ${it ? it.name : 'this item'} left to allocate.`, 'warn');
+      }
+      a.qty = val;
       saveState();
-      const it = itemById(itemId), agg = itemAgg(itemId);
+      const agg = itemAgg(itemId);
       const row = inp && inp.closest ? inp.closest('.list-row') : null;
       if (row) {
         const pctEl = row.querySelector('[data-pct]');
@@ -4591,7 +5069,7 @@
           const entry = (inst.fixedPrices[t.id] || []).find(p => p.itemId === itemId);
           return `<div class="list-row" style="cursor:pointer;" onclick="app.pickTender('${t.id}', '${entry ? entry.rate : 0}')">
             <div class="main"><div class="value">${esc(t.name)}</div><div class="sub">${esc(t.number)} · ${fmtDateShort(t.start)} → ${fmtDateShort(t.end)}</div></div>
-            <div class="value">₹${formatINR(entry ? entry.rate : 0)}/${esc(it.unit)}</div>
+            <div class="value">${formatINR(entry ? entry.rate : 0)}/${esc(it.unit)}</div>
           </div>`;
         }).join('')}
       `, [
@@ -4678,7 +5156,7 @@
                 const entry = (inst.fixedPrices[t.id] || []).find(p => p.itemId === allocItemId);
                 return `<div class="list-row" style="cursor:pointer;" onclick="app.pickTenderMissingPrice('${t.id}', ${entry ? entry.rate : 0})">
                   <div class="main"><div class="value">${esc(t.name)}</div><div class="sub">${esc(t.number)} · ${fmtDateShort(t.start)} → ${fmtDateShort(t.end)}</div></div>
-                  <div class="value">${entry ? '₹' + formatINR(entry.rate) + '/' + esc(it.unit) : 'No price yet — will be added'}</div>
+                  <div class="value">${entry ? formatINR(entry.rate) + '/' + esc(it.unit) : 'No price yet — will be added'}</div>
                 </div>`;
               }).join('')}
             `, [
@@ -4730,12 +5208,21 @@
         a.qty = idx === insts.length - 1 ? r2(left) : base;
         left = r2(left - a.qty);
       });
+      saveState();
       showToast('Split evenly across institutions (BS-14).'); renderAllocation();
     }
     function updateAllocQty(itemId, instId, qty) {
       let a = (state.cart.allocations[itemId] || []).find(x => x.instId === instId);
       if (!a) { const fr = fixedRate(instById(instId), itemId); a = { instId, qty: 0, rate: fr.rate, custom: !fr.rate, tenderId: fr.tenderId || null }; (state.cart.allocations[itemId] = state.cart.allocations[itemId] || []).push(a); }
-      a.qty = r2(Math.max(0, qty));
+      const it = itemById(itemId);
+      const supply = itemAgg(itemId).supply;
+      const max = r2(Math.max(0, supply - (allocatedQtyOf(itemId) - a.qty) - remainingEntryQty(itemId)));
+      let val = r2(Math.max(0, qty));
+      if (val > max) {
+        val = max;
+        showToast(`Only ${formatQty(max)} ${it ? it.unit : ''} of ${it ? it.name : 'this item'} left to allocate.`, 'warn');
+      }
+      a.qty = val;
       renderAllocation();
     }
     function remainingToInventory() {
@@ -4773,7 +5260,7 @@
           } }
       ]);
     }
-    function undoRemaining(itemId, idx) { (state.cart.remaining[itemId] || []).splice(idx, 1); renderAllocation(); }
+    function undoRemaining(itemId, idx) { (state.cart.remaining[itemId] || []).splice(idx, 1); saveState(); renderAllocation(); }
 
     /* ========== BS-04 Rejected Quantity Decision ========== */
     function rejectedQtyFlow(instId) {
@@ -4904,21 +5391,21 @@
       const s = cartSummary();
       const itemRows = state.cart.items.map(line => {
         const it = itemById(line.itemId); const agg = itemAgg(line.itemId);
-        return `<div class="list-row"><div class="main"><div class="value">${esc(it ? it.name : '')}</div><div class="sub">${formatQty(lineSupply(line))} ${esc(it ? it.unit : '')} ${line.invQty > 0 ? '· uses inventory ' : ''}· ₹${formatINR(line.rate)}/${esc(it ? it.unit : '')}</div></div><div class="value">${formatINR(lineCost(line))}</div></div>`;
+        return `<div class="list-row"><div class="main"><div class="value">${esc(it ? it.name : '')}</div><div class="sub">${formatQty(lineSupply(line))} ${esc(it ? it.unit : '')} ${line.invQty > 0 ? '· uses inventory ' : ''}· ${formatINR(line.rate)}/${esc(it ? it.unit : '')}</div></div><div class="value">${formatINR(lineCost(line))}</div></div>`;
       }).join('');
       const instRows = (() => {
         let rows = '';
         state.institutions.filter(i => i.active).forEach(inst => {
-          let rev = 0, cost = 0, qty = 0;
+          let rev = 0, cost = 0; const qtyEntries = [];
           Object.keys(state.cart.allocations || {}).forEach(itemId => {
             const a = (state.cart.allocations[itemId] || []).find(x => x.instId === inst.id);
             if (a && a.qty > 0) {
               const agg = itemAgg(itemId);
               const eff = effectiveAllocQty(itemId, inst.id);
-              rev += eff * a.rate; cost += agg.supply > 0 ? eff / agg.supply * agg.lc : 0; qty += eff;
+              rev += eff * a.rate; cost += agg.supply > 0 ? eff / agg.supply * agg.lc : 0; qtyEntries.push({ qty: eff, unit: itemIt(itemId) });
             }
           });
-          if (qty > 0) rows += `<div class="list-row"><div class="main"><div class="value">${esc(inst.name)}</div><div class="sub">${formatQty(qty)} kg · blended cost ${formatINR(cost)}</div></div><div class="value">${formatINR(rev)}</div></div>`;
+          if (qtyEntries.length) rows += `<div class="list-row"><div class="main"><div class="value">${esc(inst.name)}</div><div class="sub">${qtyByUnit(qtyEntries)} · blended cost ${formatINR(cost)}</div></div><div class="value">${formatINR(rev)}</div></div>`;
         });
         return rows || '<p class="text-muted text-sm">No allocations yet.</p>';
       })();
@@ -5014,6 +5501,15 @@
 
     /* ========== Commit engine (§15 single confirmation) ========== */
     function finalizeCart() {
+      /* Defence in depth: the review screen blocks these, but a commit must never be
+         able to record a cart with unallocated stock or a missing rate. */
+      const blocking = validateCart();
+      if (blocking.length) {
+        showToast(blocking[0], 'error');
+        navigate('#screen-review');
+        renderReview();
+        return;
+      }
       const s = cartSummary();
       const isCorrection = state.cart.mode === 'correction';
       const d = state.cart.date;
@@ -5070,7 +5566,7 @@
         trx.invPicks = invSnap.picks; trx.invCreatedLotIds = invSnap.created;
         showToast(`Correction committed (${trx.revision}) ✓`);
         const outdated = checkOutdatedBill(trx.id);
-        if (outdated) { showToast('Outdated shared bill — regenerate and re-share the updated version.', 'warn'); }
+        if (outdated) { showToast('Outdated shared memo — regenerate and re-share it.', 'warn'); }
       } else {
         const n = state.transactions.filter(t => t.date === d).length;
         trx = {
@@ -5140,7 +5636,7 @@
       lines.filter(l => l.payment === 'on-credit').forEach(l => {
         const amount = r2(l.purchaseQty * l.rate);
         let pay = current.find(p => p.itemId === l.itemId && p.seller === (l.seller || p.seller));
-        if (pay) { pay.amount = amount; pay.remaining = r2(pay.settlements.reduce((s, x) => s - x.amount, amount)); pay.dueDate = l.dueDate || pay.dueDate; }
+        if (pay) { pay.amount = amount; const settled = r2(pay.settlements.reduce((s, x) => s + x.amount, 0)); pay.remaining = r2(amount - settled); pay.dueDate = l.dueDate || pay.dueDate; }
         else pay = current.find(p => p.itemId === l.itemId);
         if (!pay) {
           state.payables.push({ id: 'pay' + ('' + (++state.seq.pay)), trxId: trx.id, itemId: l.itemId, seller: l.seller, amount, remaining: amount, dueDate: l.dueDate || addDays(trx.date, 7), date: trx.date, status: 'open', settlements: [] });
@@ -5148,7 +5644,7 @@
       });
       current.forEach(p => {
         const stillExists = lines.some(l => l.payment === 'on-credit' && l.itemId === p.itemId);
-        if (!stillExists && p.remaining > 0) { p.remaining = 0; p.status = 'settled'; p.settlements.push({ date: TODAY, amount: p.remaining, note: 'Payment mode changed in correction' }); }
+        if (!stillExists && p.remaining > 0) { const amt = p.remaining; p.remaining = 0; p.status = 'settled'; p.settlements.push({ date: TODAY, amount: amt, note: 'Payment mode changed in correction' }); }
       });
     }
     function resetCartState() {
@@ -5160,15 +5656,19 @@
     let trxDetailId = null, trxTab = 'items';
     function renderTrxDetail(id) {
       if (id) { trxDetailId = id; trxTab = 'items'; }
+      /* Deep-link fallback: opening the screen without a selected transaction shows
+         the most recent one instead of silently bouncing to History. */
+      if (!trxDetailId && state.transactions.length) trxDetailId = state.transactions[state.transactions.length - 1].id;
       const trx = trxById(trxDetailId); if (!trx) { navigate('#screen-history'); return; }
       const locked = daysBetween(trx.date, TODAY) > 1;
       txt('#trxTitle', trx.id);
       txt('#trxSub', `Frozen snapshot — ${fmtDateShort(trx.date)} · ${trx.revision}${locked ? ' · correction window closed' : ' · correction open until end of next day'}`);
       const outdated = checkOutdatedBill(trx.id);
+      $$('.trx-outdated').forEach(el => el.remove());
       if (outdated) {
         const warnEl = document.createElement('div');
-        warnEl.className = 'alert warn';
-        warnEl.innerHTML = `<strong>Outdated shared bill:</strong> A memo/bill (${esc(outdated.number)}) was shared for ${esc(outdated.revision)} but amounts have changed in ${esc(trx.revision)}. Regenerate and re-share the updated version.`;
+        warnEl.className = 'alert warn trx-outdated';
+        warnEl.innerHTML = `<strong>Outdated shared memo:</strong> ${esc(outdated.number)} was shared for revision ${esc(outdated.sharedRevision)} but amounts changed in ${esc(trx.revision)}. Regenerate and re-share the updated version.`;
         const content = $('#trxContent');
         if (content) content.insertAdjacentElement('beforebegin', warnEl);
       }
@@ -5176,9 +5676,9 @@
       html('#trxTabs', tabs.map(t => `<button class="btn ${trxTab === t[0] ? 'btn-primary' : 'btn-secondary'}" style="padding:6px 12px; font-size: var(--text-xs);" onclick="app.setTrxTab('${t[0]}')">${t[1]}</button>`).join(''));
       let c = '';
       if (trxTab === 'items') c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Items — frozen rates</p>${trx.items.map(it => `
-        <div class="list-row"><div class="main"><div class="value">${esc(itemNameOf(it.itemId))}</div><div class="sub">${formatQty(it.qty)} ${esc(itemIt(it.itemId))} · ₹${formatINR(it.rate)} · ${it.payment === 'on-credit' ? 'On-credit (' + esc(it.seller) + ')' : 'Paid now'}</div></div><div class="value">${formatINR(it.cost)}</div></div>`).join('') || '<p class="text-muted text-sm">No items.</p>'}</div></div>`;
+        <div class="list-row"><div class="main"><div class="value">${esc(itemNameOf(it.itemId))}</div><div class="sub">${formatQty(it.qty)} ${esc(itemIt(it.itemId))} · ${formatINR(it.rate)} · ${it.payment === 'on-credit' ? 'On-credit (' + esc(it.seller) + ')' : 'Paid now'}</div></div><div class="value">${formatINR(it.cost)}</div></div>`).join('') || '<p class="text-muted text-sm">No items.</p>'}</div></div>`;
       else if (trxTab === 'insts') c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Allocations</p>${trx.allocations.map(a => `
-        <div class="list-row"><div class="main"><div class="value">${esc(instNameOf(a.instId))}</div><div class="sub">${formatQty(a.netQty != null ? a.netQty : a.qty)}${a.rejectQty ? ` · ${formatQty(a.rejectQty)} rejected` : ''} · ₹${formatINR(a.rate)} · cost share ${formatINR(a.cost)}${a.custom ? ' · custom' : ''}</div></div><div class="value">${formatINR(a.revenue)}</div></div>`).join('') || '<p class="text-muted text-sm">—</p>'}</div></div>`;
+        <div class="list-row"><div class="main"><div class="value">${esc(instNameOf(a.instId))}</div><div class="sub">${formatQty(a.netQty != null ? a.netQty : a.qty)}${a.rejectQty ? ` · ${formatQty(a.rejectQty)} rejected` : ''} · ${formatINR(a.rate)} · cost share ${formatINR(a.cost)}${a.custom ? ' · custom' : ''}</div></div><div class="value">${formatINR(a.revenue)}</div></div>`).join('') || '<p class="text-muted text-sm">—</p>'}</div></div>`;
       else if (trxTab === 'inv') c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Inventory movement</p>
         ${(state.inventory.filter(l => l.movements || []).filter(l => l.dateAdded === trx.date) || []).map(l => `<div class="list-row"><div class="main"><div class="value">${esc(itemNameOf(l.itemId))} lot</div><div class="sub">${formatQty(l.qty)} ${esc(itemIt(l.itemId))} · ${esc(l.source)}</div></div><span class="badge badge-green">Available ×</span></div>`).join('')}
         ${(trx.remaining || []).map(m => `<div class="list-row"><div class="main"><div class="value">Remaining → Inventory</div><div class="sub">${formatQty(m.qty)} ${esc(itemNameOf(m.itemId))}</div></div><span class="badge badge-green">${formatINR(m.cost)}</span></div>`).join('')}
@@ -5186,7 +5686,7 @@
         ${(trx.rejected || []).map(m => `<div class="list-row"><div class="main"><div class="value">Rejected · ${esc(instNameOf(m.instId))}</div><div class="sub">${formatQty(m.qty)} ${esc(itemNameOf(m.itemId))} → ${m.action}${m.reason ? ' · ' + esc(m.reason) : ''}</div></div><span class="badge badge-${m.action === 'inventory' ? 'green' : 'red'}">${formatINR(m.cost)}</span></div>`).join('')}
         ${trxPhotosHtml(trx)}
       </div></div>`;
-      else if (trxTab === 'exp') c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Expenses — ₹${formatINR(trx.expensesTotal)}</p>${trx.expenses.map(e => `
+      else if (trxTab === 'exp') c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Expenses — ${formatINR(trx.expensesTotal)}</p>${trx.expenses.map(e => `
         <div class="list-row"><div class="main"><div class="value">${esc(e.type)}</div><div class="sub">${esc(e.note || '')}</div></div><div class="value">${formatINR(e.amount)}</div></div>`).join('') || '<p class="text-muted text-sm">—</p>'}</div></div>`;
       else c = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Result</p>
         <div class="list-row"><div class="main"><div class="value">Total cost</div><div class="sub">Allocated ${formatINR(r2(trx.totalCost - trx.expensesTotal - (trx.lossesTotal || 0)))} + losses ${formatINR(trx.lossesTotal || 0)} + expenses ${formatINR(trx.expensesTotal)}</div></div><div class="value">${formatINR(trx.totalCost)}</div></div>
@@ -5234,7 +5734,7 @@
       trx.allocations.forEach(a => {
         if (!state.cart.allocations[a.itemId]) state.cart.allocations[a.itemId] = [];
         let row = state.cart.allocations[a.itemId].find(x => x.instId === a.instId);
-        if (!row) state.cart.allocations[a.itemId].push({ instId: a.instId, qty: a.qty, rate: a.rate, custom: !!a.custom });
+        if (!row) state.cart.allocations[a.itemId].push({ instId: a.instId, qty: a.qty, rate: a.rate, custom: !!a.custom, tenderId: a.tenderId || null });
         else { row.qty = r2(row.qty + a.qty); }
       });
       trx.remaining.forEach(m => {
@@ -5262,7 +5762,7 @@
       trx.allocations.forEach(a => {
         if (!state.cart.allocations[a.itemId]) state.cart.allocations[a.itemId] = [];
         let row = state.cart.allocations[a.itemId].find(x => x.instId === a.instId);
-        if (!row) state.cart.allocations[a.itemId].push({ instId: a.instId, qty: a.qty, rate: a.rate, custom: !!a.custom });
+        if (!row) state.cart.allocations[a.itemId].push({ instId: a.instId, qty: a.qty, rate: a.rate, custom: !!a.custom, tenderId: a.tenderId || null });
         else { row.qty = r2(row.qty + a.qty); }
       });
       trx.remaining.forEach(m => {
@@ -5277,36 +5777,45 @@
       showToast('Correction mode — edit and re-confirm (R' + (trx.revisions.length + 2) + ').');
       navigate('#screen-cart');
     }
+    /* Memos are documents, not accounting records: sharing one must never create a
+       bill or move money. It only stamps the revision that was shared, so a later
+       correction can flag "outdated — regenerate and re-share". */
     function memoShare() {
       const trx = trxById(trxDetailId); if (!trx) return;
-      const lines = trx.items.map(it => `• ${itemNameOf(it.itemId)} — ${formatQty(it.qty)} @ ₹${it.rate} = ₹${Math.round(it.cost).toLocaleString('en-IN')}`);
-      let alloc = trx.allocations.map(a => `• ${instNameOf(a.instId)} — ${formatQty(a.netQty != null ? a.netQty : a.qty)}${a.rejectQty ? ` (−${formatQty(a.rejectQty)} rejected)` : ''} @ ₹${a.rate} = ₹${Math.round(a.revenue).toLocaleString('en-IN')}`);
-      const txt2 = `Bill memo — ${trx.id} · ${fmtDate(trx.date)} (${trx.revision})\nPurchases:\n${lines.join('\n')}\nSupplies:\n${alloc.join('\n')}\n\nRevenue ${formatINR(trx.revenue)} · Result ${fmtSign(trx.profit)}`;
-      const done = () => { markBillShared(trx.id); showToast('Memo generated — Shared ✓'); };
-      if (navigator.share) { navigator.share({ title: 'Bill Memo', text: txt2 }).catch(() => {}); done(); }
-      else if (navigator.clipboard) { navigator.clipboard.writeText(txt2).then(() => { done(); }).catch(() => { markBillShared(trx.id); showToast('Memo generated ✓'); }); }
-      else { markBillShared(trx.id); showToast('Memo generated ✓'); }
-    }
-    function markBillShared(trxId) {
-      const trx = trxById(trxId); if (!trx) return;
-      // Find or create a bill record for this transaction
-      const instId = trx.allocations[0]?.instId || '';
-      let bill = state.bills.find(b => b.instId === instId && (b.trxIds || []).includes(trxId));
-      if (!bill) {
-        bill = { id: 'bill' + ('' + (++state.seq.bill)), instId, number: 'MEMO-' + pad(state.seq.bill, 3), date: TODAY, periodStart: trx.date, periodEnd: trx.date, trxIds: [trxId], gross: trx.revenue, deductions: [], net: trx.revenue };
-        state.bills.push(bill);
+      const instIds = [...new Set((trx.allocations || []).map(a => a.instId))];
+      if (!instIds.length) { showToast('Nothing allocated to bill yet.', 'error'); return; }
+      if (instIds.length > 1) {
+        openModal('Memo / Bill — choose institution', `
+          <p class="text-muted text-sm">This transaction supplied ${instIds.length} institutions. A bill memo is issued per institution.</p>
+          ${instIds.map(id => {
+            const rev = r2((trx.allocations || []).filter(a => a.instId === id).reduce((s, a) => s + a.revenue, 0));
+            return `<div class="list-row" style="cursor:pointer;" onclick="app.shareMemoFor('${esc(id)}')">
+              <div class="main"><div class="value">${esc(instNameOf(id))}</div><div class="sub">${formatINR(rev)} supplied on ${esc(fmtDateShort(trx.date))}</div></div>
+              <span class="badge badge-blue">Create</span></div>`;
+          }).join('')}`, [{ label: 'Cancel', cls: 'btn-secondary', onClick: () => {} }]);
+        return;
       }
-      bill.shared = true; bill.sharedAt = TODAY; bill.sharedRevision = trx.revision;
-      saveState();
+      shareMemoFor(instIds[0]);
+    }
+    function shareMemoFor(instId) {
+      const trx = trxById(trxDetailId); if (!trx) return;
+      const rows = (trx.allocations || []).filter(a => a.instId === instId);
+      const lines = rows.map(a => `• ${itemNameOf(a.itemId)} — ${formatQty(a.netQty != null ? a.netQty : a.qty)}${a.rejectQty ? ` (−${formatQty(a.rejectQty)} rejected)` : ''} @ ${formatINR(a.rate)} = ${formatINR(a.revenue)}`);
+      const total = r2(rows.reduce((s, a) => s + a.revenue, 0));
+      const txt2 = `Bill memo — ${instNameOf(instId)}\n${trx.id} · ${fmtDate(trx.date)} (${trx.revision})\n\n${lines.join('\n')}\n\nTotal supplied: ${formatINR(total)}`;
+      trx.memos = trx.memos || [];
+      let memo = trx.memos.find(m => m.instId === instId);
+      if (!memo) { memo = { instId, number: 'MEMO-' + pad(++state.seq.bill, 3) }; trx.memos.push(memo); }
+      memo.shared = true; memo.sharedAt = TODAY; memo.sharedRevision = trx.revision;
+      closeModal();
+      const done = () => { saveState(); renderTrxDetail(trxDetailId); showToast(`Memo ${memo.number} generated — Shared ✓`); };
+      if (navigator.share) { navigator.share({ title: 'Bill Memo', text: txt2 }).catch(() => {}); done(); }
+      else if (navigator.clipboard) { navigator.clipboard.writeText(txt2).then(done).catch(done); }
+      else done();
     }
     function checkOutdatedBill(trxId) {
       const trx = trxById(trxId); if (!trx) return null;
-      const instId = trx.allocations[0]?.instId || '';
-      const bill = state.bills.find(b => b.instId === instId && (b.trxIds || []).includes(trxId) && b.shared);
-      if (bill && bill.sharedRevision !== trx.revision) {
-        return bill;
-      }
-      return null;
+      return (trx.memos || []).find(m => m.shared && m.sharedRevision !== trx.revision) || null;
     }
 
     /* ========== BS-11 Post-Lock Adjustment ========== */
@@ -5356,9 +5865,9 @@
         state.inventory.push(lot);
         showToast(`Post-lock adjustment recorded — ${formatQty(qty)} ${esc(itemNameOf(itemId))} added to inventory as rejected lot.`);
       } else if (type === 'deduction' && amt > 0) {
-        showToast(`Post-lock adjustment recorded — ₹${formatINR(amt)} deduction applied to dues.`);
+        showToast(`Post-lock adjustment recorded — ${formatINR(amt)} deduction applied to dues.`);
       } else if (type === 'weight' && amt > 0) {
-        showToast(`Post-lock adjustment recorded — weight difference ₹${formatINR(amt)} applied.`);
+        showToast(`Post-lock adjustment recorded — weight difference ${formatINR(amt)} applied.`);
       } else {
         showToast('Post-lock adjustment recorded.');
       }
@@ -5369,7 +5878,7 @@
         const inst = instById(instId);
         const d = { date, reason: type === 'weight' ? 'Accepted weight difference' : (gv('#plaReason') || 'Other'), amount: r2(amt), note: `Post-lock adjustment ${trx.id}` };
         const bills = state.bills.filter(b => b.instId === instId);
-        const open = bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === instId).reduce((s, p) => s + p.amount, 0)) > 0);
+        const open = bills.find(b => billPending(b) > 0.001);
         if (open) { open.deductions.push(d); open.net = r2(open.gross - open.deductions.reduce((s, x) => s + x.amount, 0)); }
         else { d.instId = instId; state.dedPending.push(d); }
         saveState();
@@ -5428,13 +5937,20 @@
       return r2(sum);
     }
     function billedPending(instId) {
-      const net = r2(state.bills.filter(b => b.instId === instId).reduce((s, b) => s + b.net, 0));
-      const paid = r2(state.payments.filter(p => p.instId === instId).reduce((s, p) => s + p.amount, 0));
+      const bills = state.bills.filter(b => b.instId === instId);
+      const net = r2(bills.reduce((s, b) => s + b.net, 0));
+      const paid = r2(bills.reduce((s, b) => s + billPaid(b.id), 0));
       return r2(net - paid);
     }
+    /* Money applied to one bill — allocations are the only source of truth, so a
+       receipt can never be counted twice (it used to be stored once per bill). */
+    function billPaid(billId) {
+      return r2(state.payments.reduce((s, p) => s + (p.allocations || []).filter(a => a.billId === billId).reduce((x, a) => x + a.amount, 0), 0));
+    }
+    function billPending(b) { return r2(b.net - billPaid(b.id)); }
     function instSummary(instId) {
       const billed = billedPending(instId), accrued = accruedPending(instId);
-      const collected = r2(state.payments.filter(p => p.instId === instId).reduce((s, p) => s + p.amount, 0));
+      const collected = r2(state.payments.filter(p => p.instId === instId && !p.creditBalance).reduce((s, p) => s + p.amount, 0));
       const billedGross = r2(state.bills.filter(b => b.instId === instId).reduce((s, b) => s + b.gross, 0));
       const cb = creditBalance(instId);
       const totalPending = r2(billed + accrued - cb); // credit balance reduces pending
@@ -5469,8 +5985,10 @@
     }
     function saveInstEdit(e) {
       if (e) e.preventDefault();
-      const name = gv('#ieName');
+      const name = gv('#ieName').trim();
       if (!name) { showToast('Institution name required.', 'error'); return false; }
+      const dup = state.institutions.find(i => i.id !== state.editingInst && i.name.trim().toLowerCase() === name.toLowerCase());
+      if (dup) { showToast(`An institution named "${dup.name}" already exists.`, 'error'); return false; }
       if (state.editingInst) {
         const inst = instById(state.editingInst);
         if (inst) { inst.name = name; inst.contact = gv('#ieContact'); inst.phone = gv('#iePhone'); inst.address = gv('#ieAddr'); inst.location = gv('#ieNotes'); }
@@ -5494,7 +6012,7 @@
       const hasOpen = activeTenders > 0 || dues.totalPending > 0;
       openModal('Deactivate Institution (DL-04)', `
         <p class="text-muted text-sm">Deactivate <strong>${esc(inst.name)}</strong>?</p>
-        ${hasOpen ? `<p class="text-muted text-sm" style="color:var(--danger);"><strong>Open business:</strong> ${activeTenders} active tender${activeTenders > 1 ? 's' : ''}, ₹${formatINR(dues.totalPending)} accrued dues.</p>` : ''}
+        ${hasOpen ? `<p class="text-muted text-sm" style="color:var(--danger);"><strong>Open business:</strong> ${activeTenders} active tender${activeTenders > 1 ? 's' : ''}, ${formatINR(dues.totalPending)} accrued dues.</p>` : ''}
         <p class="text-muted text-sm">New carts and allocations to this institution will be blocked. Receivables, contract P&L, and history stay intact and collectable.</p>`, [
         { label: 'Cancel', cls: 'btn-secondary', onClick: () => {} },
         { label: 'Deactivate', cls: 'btn-danger', onClick: () => {
@@ -5553,9 +6071,11 @@
       ]);
     }
     function saveTender(inst) {
-      const name = gv('#tndName');
+      const name = gv('#tndName').trim();
       if (!name) { showToast('Tender name required.', 'error'); return false; }
-      const tender = { id: 't' + ('' + (++state.seq.inst)) + 'T' + inst.tenders.length, name, number: gv('#tndNum'), start: gv('#tndStart') || TODAY, end: gv('#tndEnd') || addDays(TODAY, 30), paymentTerms: gv('#tndTerms'), overdueAlertDays: parseInt(gv('#tndOAD'), 10) || 7, demandedQty: {} };
+      const start = gv('#tndStart') || TODAY, end = gv('#tndEnd') || addDays(TODAY, 30);
+      if (end < start) { showToast('End date must be on or after the start date.', 'error'); return false; }
+      const tender = { id: 't' + ('' + (++state.seq.inst)) + 'T' + inst.tenders.length, name, number: gv('#tndNum'), start, end, paymentTerms: gv('#tndTerms'), overdueAlertDays: parseInt(gv('#tndOAD'), 10) || 7, demandedQty: {} };
       inst.tenders.push(tender); inst.fixedPrices[tender.id] = inst.fixedPrices[tender.id] || [];
       saveState(); showToast('Tender added ✓'); renderInstProfile(); renderInstList();
     }
@@ -5572,7 +6092,13 @@
         <div class="field"><label>Payment Terms</label><input type="text" id="tndTerms" value="${esc(t.paymentTerms)}" /></div>
         <div class="field"><label>Overdue Alert Days</label><input type="number" id="tndOAD" value="${t.overdueAlertDays}" /></div>`, [
         { label: 'Delete Tender', cls: 'btn-danger', onClick: () => deleteTenderAsk(inst, tenderId) },
-        { label: 'Save', cls: 'btn-primary', onClick: () => { t.name = gv('#tndName') || t.name; t.number = gv('#tndNum'); t.start = gv('#tndStart'); t.end = gv('#tndEnd'); t.paymentTerms = gv('#tndTerms'); t.overdueAlertDays = parseInt(gv('#tndOAD'), 10) || t.overdueAlertDays; saveState(); renderInstProfile(); renderInstList(); showToast('Tender saved ✓'); } }
+        { label: 'Save', cls: 'btn-primary', onClick: () => {
+            const nm = gv('#tndName').trim();
+            if (!nm) { showToast('Tender name required.', 'error'); return false; }
+            const st = gv('#tndStart'), en = gv('#tndEnd');
+            if (st && en && en < st) { showToast('End date must be on or after the start date.', 'error'); return false; }
+            t.name = nm; t.number = gv('#tndNum'); t.start = st; t.end = en; t.paymentTerms = gv('#tndTerms'); t.overdueAlertDays = parseInt(gv('#tndOAD'), 10) || t.overdueAlertDays; saveState(); renderInstProfile(); renderInstList(); showToast('Tender saved ✓');
+          } }
       ]);
     }
     function openTenderMgmt(tenderId) {
@@ -5618,8 +6144,11 @@
       html('#tpSubSure', '');
     }
     function setTenderPrice(instId, tenderId, itemId) {
-      const inst = instById(instId);
-      const prices = inst.fixedPrices[tenderId];
+      const inst = instById(instId); if (!inst) return;
+      /* A tender created before any price existed has no price array — every tender
+         must be able to accept its first price instead of throwing. */
+      if (!inst.fixedPrices) inst.fixedPrices = {};
+      const prices = inst.fixedPrices[tenderId] = inst.fixedPrices[tenderId] || [];
       const existing = prices.find(p => p.itemId === itemId);
       const unused = state.items.filter(it => it.active && !prices.some(p => p.itemId === it.id));
       const nextItem = itemId || (unused[0] || state.items[0]).id;
@@ -5677,7 +6206,7 @@
       const inst = instById(state.selectedInstId); if (!inst) { navigate('#screen-inst-list'); return; }
       const bills = state.bills.filter(b => b.instId === inst.id);
       const raw = bills.map(b => {
-        const paid = r2(state.payments.filter(p => p.instId === inst.id && p.against === b.id).reduce((s, p) => s + p.amount, 0));
+        const paid = billPaid(b.id);
         const pending = r2(b.net - paid);
         const age = daysBetween(b.date, TODAY);
         const overTerm = age > ((inst.tenders[0] || {}).overdueAlertDays || 7);
@@ -5688,7 +6217,7 @@
           </div>
           <div style="padding: var(--space-3) var(--space-5);">
             ${b.deductions.map(d => `<div class="list-row"><div class="main"><div class="value">Deduction · ${esc(d.reason)}</div><div class="sub">${esc(fmtDateShort(d.date))}</div></div><div class="value loss">−${formatINR(d.amount)}</div></div>`).join('')}
-            ${state.payments.filter(p => p.instId === inst.id && p.against === b.id).map(p => `<div class="list-row"><div class="main"><div class="value">Payment · ${esc(p.method || 'Cash')}</div><div class="sub">${esc(fmtDateShort(p.date))}${p.note ? ' · ' + esc(p.note) : ''}</div></div><div class="value profit">+${formatINR(p.amount)}</div></div>`).join('')}
+            ${(b.allocations || []).length ? '' : ''}${state.payments.filter(p => p.instId === inst.id && (p.allocations || []).some(a => a.billId === b.id)).map(p => { const part = (p.allocations || []).filter(a => a.billId === b.id).reduce((s, a) => s + a.amount, 0); return `<div class="list-row"><div class="main"><div class="value">Payment · ${esc(p.method || 'Cash')}</div><div class="sub">${esc(fmtDateShort(p.date))}${p.note ? ' · ' + esc(p.note) : ''}</div></div><div class="value profit">+${formatINR(part)}</div></div>`; }).join('')}
             <div class="list-row"><div class="main"><div class="value">Aging</div><div class="sub">${age} days since bill</div></div><span class="text-sm" style="color:${overTerm ? 'var(--danger)' : 'var(--muted)'}">${overTerm ? 'Overdue' : 'Within terms'}</span></div>
           </div>
         </div>`;
@@ -5718,7 +6247,7 @@
       openModal('Record Payment (BS-09)', `
         <p class="text-muted text-sm" id="pyPendingText">Pending ${formatINR(dues.totalPending)} (billed ${formatINR(dues.billed)} + unbilled ${formatINR(dues.accrued)}).</p>
         <div class="field"><label>Amount Received (₹) <span style="color:var(--danger)">*</span></label><input type="text" id="pyAmt" placeholder="0" /></div>
-        <div class="field"><label>Against</label><select id="pyAgainst"><option value="">General advance</option>${bills.map(b => `<option value="${b.id}">${esc(b.number)} · ${esc(fmtDateShort(b.date))} · pending ${formatINR(r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === inst.id).reduce((s, p) => s + p.amount, 0)))}</option>`).join('')}</select></div>
+        <div class="field"><label>Against</label><select id="pyAgainst"><option value="">General advance</option>${bills.map(b => `<option value="${b.id}">${esc(b.number)} · ${esc(fmtDateShort(b.date))} · pending ${formatINR(billPending(b))}</option>`).join('')}</select></div>
         <div class="field mt-4"><p class="eyebrow">Deduction Lines</p>
           <div class="actions mt-2" style="gap: var(--space-3);"><button class="btn btn-secondary flex1" onclick="app.addPayDeduction()">+ Add Deduction</button></div>
           <div id="pyDedList" style="margin-top: var(--space-2);">${dedHtml}</div>
@@ -5757,9 +6286,9 @@
         const excess = r2(totalApplied - dues.totalPending);
         closeModal();
         openModal('Overpayment intent step (G-1)', `
-          <p class="text-muted text-sm">Received ₹${formatINR(amt)} plus deductions ₹${formatINR(totalDed)} = ₹${formatINR(totalApplied)}.</p>
-          <p class="text-muted text-sm">Pending dues: ₹${formatINR(dues.totalPending)}.</p>
-          <p class="text-muted text-sm" style="color:var(--danger); font-weight:700;">₹${formatINR(excess)} exceeds pending — it becomes a credit balance (Advance from ${esc(inst.name)}).</p>
+          <p class="text-muted text-sm">Received ${formatINR(amt)} plus deductions ${formatINR(totalDed)} = ${formatINR(totalApplied)}.</p>
+          <p class="text-muted text-sm">Pending dues: ${formatINR(dues.totalPending)}.</p>
+          <p class="text-muted text-sm" style="color:var(--danger); font-weight:700;">${formatINR(excess)} exceeds pending — it becomes a credit balance (Advance from ${esc(inst.name)}).</p>
           <p class="text-muted text-sm">The credit will auto-apply to the next bill (FIFO).</p>`, [
           { label: 'Adjust', cls: 'btn-secondary', onClick: () => { recordPayModal(); } },
           { label: 'Record it (credit balance)', cls: 'btn-danger', onClick: () => { closeModal(); savePaymentFinal(inst, amt, true); } }
@@ -5772,33 +6301,35 @@
       const deductions = [..._payDeductions];
       _payDeductions = [];
       const against = gv('#pyAgainst') || '';
-      const payment = { id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: r2(amt), method: gv('#pyMethod'), against, note: gv('#pyNote'), creditBalance: false, deductions };
-      state.payments.push(payment);
-      // Apply deductions to open bill or hold pending
-      const bills = state.bills.filter(b => b.instId === inst.id);
+      const method = gv('#pyMethod') || 'Cash';
+      const note = gv('#pyNote') || '';
+      /* 1 — deduction lines land on the targeted/open bill, else wait for the next bill. */
       deductions.forEach(d => {
-        const openBill = against ? bills.find(b => b.id === against) : bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id && p.instId === inst.id).reduce((s,p)=>s+p.amount,0)) > 0);
+        const openBill = against
+          ? state.bills.find(b => b.id === against && b.instId === inst.id)
+          : state.bills.filter(b => b.instId === inst.id && billPending(b) > 0.001).sort((a, b) => a.date > b.date ? 1 : -1)[0];
         if (openBill) { openBill.deductions.push(d); openBill.net = r2(openBill.gross - openBill.deductions.reduce((s, x) => s + x.amount, 0)); }
         else { d.instId = inst.id; state.dedPending.push(d); }
       });
-      // Apply received amount to bills FIFO (oldest first), respecting 'against' selection
+      /* 2 — one receipt, allocated oldest-bill-first (or to the chosen bill). */
       let remaining = r2(amt);
+      const bills = state.bills.filter(b => b.instId === inst.id);
       const targets = against ? bills.filter(b => b.id === against) : bills.slice().sort((a, b) => a.date > b.date ? 1 : -1);
+      const allocations = [];
       targets.forEach(b => {
         if (remaining <= 0.0001) return;
-        const alreadyPaid = r2(state.payments.filter(p => p.against === b.id && p.instId === inst.id && p.id !== payment.id).reduce((s, p) => s + p.amount, 0));
-        const pending = r2(b.net - alreadyPaid);
-        const apply = Math.min(remaining, pending);
-        if (apply > 0.0001) { state.payments.push({ id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: apply, method: gv('#pyMethod'), against: b.id, note: gv('#pyNote') || 'Auto-applied', creditBalance: false, deductions: [] }); remaining = r2(remaining - apply); }
+        const apply = Math.min(remaining, billPending(b));
+        if (apply > 0.0001) { allocations.push({ billId: b.id, amount: r2(apply) }); remaining = r2(remaining - apply); }
       });
-      // If credit path and there's still remaining after covering bills, it's credit balance
-      if (isCredit && remaining > 0.0001) {
-        payment.creditBalance = true;
-        payment.amount = r2(payment.amount - remaining); // original payment covers what it could
-        const creditPay = { id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: remaining, method: gv('#pyMethod'), against: '', note: gv('#pyNote') || 'Credit balance', creditBalance: true, deductions: [] };
-        state.payments.push(creditPay);
+      const applied = r2(amt - remaining);
+      const receipt = { id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: applied, method, against: allocations.length ? allocations[0].billId : against, note, creditBalance: false, deductions, allocations };
+      if (applied > 0.0001) state.payments.push(receipt);
+      /* 3 — anything left over is an advance, never a second receipt. */
+      if (remaining > 0.0001) {
+        state.payments.push({ id: 'rcp' + ('' + (++state.seq.paym)), instId: inst.id, date: TODAY, amount: remaining, method, against: '', note: note || 'Credit balance', creditBalance: true, deductions: [], allocations: [] });
       }
-      saveState(); showToast('Payment recorded ✓' + (isCredit ? ' · credit balance created' : ''));
+      saveState();
+      showToast('Payment recorded ✓' + (remaining > 0.0001 ? ' · credit balance created' : ''));
       renderInstProfile(); renderReceivablesSafe(); renderDuesMenu();
     }
     function renderReceivablesSafe() { if (state.currentScreen === 'receivables') renderReceivables(); }
@@ -5821,16 +6352,24 @@
     }
     function issueBill(inst, gross, dedTotal, unbilledTrxs) {
       if (gross <= 0) { showToast('Nothing to bill.', 'error'); return false; }
+      const net = r2(gross - dedTotal);
       const bill = {
         id: 'bill' + ('' + (++state.seq.bill)), instId: inst.id, number: 'BILL-' + pad(state.seq.bill, 3), date: TODAY,
         periodStart: unbilledTrxs.length ? unbilledTrxs[0].date : TODAY, periodEnd: TODAY,
         trxIds: unbilledTrxs.map(t => t.id), gross: r2(gross),
         deductions: state.dedPending.filter(d => d.instId === inst.id).map(d => ({ date: d.date, reason: d.reason, amount: d.amount, note: d.note })),
-        net: r2(gross - dedTotal)
+        net: Math.max(0, net)
       };
       state.bills.push(bill);
       state.dedPending = state.dedPending.filter(d => d.instId !== inst.id);
-      saveState(); showToast(`Bill ${bill.number} issued — ${formatINR(bill.net)} due ✓`);
+      if (net < 0) {
+        const excess = r2(-net);
+        state.dedPending.push({ instId: inst.id, date: TODAY, reason: 'Deduction carried forward', amount: excess, note: 'Exceeded bill supply — held for next bill' });
+        saveState();
+        showToast(`Bill ${bill.number} capped at ${formatINR(0)} — ${formatINR(excess)} of deductions stayed pending.`, 'warn');
+      } else {
+        saveState(); showToast(`Bill ${bill.number} issued — ${formatINR(bill.net)} due ✓`);
+      }
       renderInstProfile(); renderReceivablesSafe();
     }
     function pad(n, w) { return String(n).padStart(w, '0'); }
@@ -5852,7 +6391,9 @@
       const amt = parseFloat(gv('#dnAmt')) || 0;
       if (amt <= 0) { showToast('Enter amount.', 'error'); return false; }
       const bills = state.bills.filter(b => b.instId === inst.id);
-      const open = bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id).reduce((s, p) => s + p.amount, 0)) > 0);
+      const open = bills.find(b => billPending(b) > 0.001);
+      const pending = open ? billPending(open) : instSummary(inst.id).accrued;
+      if (amt > pending + 0.001) { showToast(`Deduction exceeds pending ${formatINR(r2(pending))}.`, 'error'); return false; }
       const d = { date: TODAY, reason: gv('#dnReason') || 'Quality', amount: r2(amt), note: gv('#dnNote') };
       if (open) { open.deductions.push(d); open.net = r2(open.gross - open.deductions.reduce((s, x) => s + x.amount, 0)); showToast('Deduction applied to ' + open.number + ' ✓'); }
       else { d.instId = inst.id; state.dedPending.push(d); showToast('Deduction held for next bill ✓'); }
@@ -5864,13 +6405,19 @@
       const rows = state.institutions.map(inst => {
         const d = instSummary(inst.id);
         return `<div class="list-row" onclick="app.openInst('${inst.id}')" style="cursor:pointer;">
-          <div class="main"><div class="value">${esc(inst.name)}</div><div class="sub">Billed ${formatINR(d.billed)} + Unbilled ${formatINR(d.accrued)}${d.creditBalance > 0 ? ' · Credit −' + formatINR(d.creditBalance) : ''}</div></div>
+          <div class="main"><div class="value">${esc(inst.name)}${inst.active === false ? ' <span class="badge badge-gray" style="font-size:var(--text-xs);">Inactive</span>' : ''}</div><div class="sub">Billed ${formatINR(d.billed)} + Unbilled ${formatINR(d.accrued)}${d.creditBalance > 0 ? ' · Credit −' + formatINR(d.creditBalance) : ''}</div></div>
           <div class="value ${d.totalPending > 0 ? 'loss' : 'profit'}">${formatINR(d.totalPending)}</div>
         </div>`;
       }).join('');
-      const totalPending = r2(state.institutions.reduce((s, i) => s + instSummary(i.id).totalPending, 0));
-      html('#duesList', `${rows || '<p class="text-muted text-sm">No institutions yet.</p>'}
-        <div class="list-row flush" style="border-top:1px solid var(--border);"><div class="main"><div class="value" style="font-weight:700;">Total pending</div><div class="sub">Profit ≠ cash — accrued supplies are tracked till billed</div></div><div class="value loss">${formatINR(totalPending)}</div></div>`);
+      const totals = state.institutions.reduce((a, i) => {
+        const s = instSummary(i.id);
+        a.total += s.totalPending; a.billed += s.billed; a.accrued += s.accrued; return a;
+      }, { total: 0, billed: 0, accrued: 0 });
+      txt('#duesTotal', formatINR(r2(totals.total)));
+      txt('#duesBilled', formatINR(r2(totals.billed)));
+      txt('#duesAccrued', formatINR(r2(totals.accrued)));
+      html('#duesList', `${rows || '<div class="empty-state"><h3>No institutions yet</h3><p class="text-muted text-sm mt-3">Add an institution to start tracking dues.</p></div>'}
+        <div class="list-row flush" style="border-top:1px solid var(--border);"><div class="main"><div class="value" style="font-weight:700;">Total pending</div><div class="sub">Profit ≠ cash — accrued supplies are tracked till billed</div></div><div class="value loss">${formatINR(r2(totals.total))}</div></div>`);
     }
     function renderDuesMenu() { if (state.currentScreen === 'dues') renderDues(); }
 
@@ -5920,7 +6467,10 @@
       const el = map[invFilt] && $(map[invFilt]); if (el) el.classList.add('btn-primary');
       let lots = state.inventory;
       if (invFilt === 'available') lots = lots.filter(l => l.qty > 0 && l.status === 'Available');
-      else if (invFilt === 'sold') lots = lots.filter(l => l.status === 'Sold');
+      /* "Partially used" means stock that has been drawn down but is still on hand —
+         it used to filter status === 'Sold', which only happens at qty 0, so the
+         filter could never return a row. */
+      else if (invFilt === 'sold') lots = lots.filter(l => l.qty > 0 && (l.movements || []).some(m => m.qty < 0));
       else if (invFilt === 'rejected') lots = lots.filter(l => (l.status || '').toLowerCase().includes('reject'));
       else if (invFilt === 'waste') lots = lots.filter(l => (l.status || '').toLowerCase().includes('waste') || (l.status || '').toLowerCase().includes('loss'));
       else lots = lots.filter(l => l.qty > 0);
@@ -5934,7 +6484,7 @@
           <button class="btn btn-secondary" style="padding:6px 10px; min-width:0;" onclick="event.stopPropagation(); app.inventoryQuickActions('${lot.id}')" aria-label="Lot actions">⋯</button>
         </div>`;
       }).join('') : '<div class="empty-state"><h3>No stock here</h3><p class="text-muted text-sm mt-3">Day remainings and manual stock appear as lots here.</p></div>');
-      txt('#invTotalQty', formatQty(availQty) + ' kg');
+      txt('#invTotalQty', qtyByUnit(state.inventory.filter(l => l.qty > 0 && l.status === 'Available').map(l => ({ qty: l.qty, unit: itemIt(l.itemId) }))));
       txt('#invTotalValue', formatINR(value));
       txt('#invItemCount', String(state.inventory.filter(l => l.qty > 0 && l.status === 'Available').length));
       txt('#invAttention', String(attentionAlerts().reduce((s, a) => s + (a.kind === 'oldStock' ? 1 : 0), 0)));
@@ -6134,15 +6684,28 @@
       ]);
     }
     function dayEntryFlow(type) {
+      /* The type picker must close before the form opens — otherwise two overlays
+         stack and the form's inputs sit behind the picker. */
+      closeOpenModals();
       if (type === 'sale') return saleEntryForm();
       if (type === 'waste') return wasteEntryForm();
       if (type === 'settlement') return settlementEntryForm();
       if (type === 'voucher') return voucherEntryForm();
       if (type === 'deduction') return deductionEntryForm();
     }
+    /* Closes every dynamic modal (static dialogs keep their own lifecycle). */
+    function closeOpenModals() {
+      $$('.overlay.open:not(.static-dl)').forEach(el => closeModal(el));
+    }
     function dateField(id, label, d) { return `<div class="field"><label>${esc(label)}</label><input type="date" id="${id}" value="${esc(d)}" /></div>`; }
     function saleEntryForm() {
       const lots = state.inventory.filter(l => l.qty > 0 && l.status === 'Available');
+      if (lots.length === 0) {
+        openModal('Sale from Inventory', `<div class="empty-state"><h3>No stock available to sell.</h3><p class="text-muted text-sm mt-3">Stock arrives from a confirmed cart\u2019s remaining quantity, or use Add Stock Manually on the Inventory screen.</p></div>`, [
+          { label: 'Close', cls: 'btn-secondary', onClick: () => {} }
+        ]);
+        return;
+      }
       openModal('Sale from Inventory', `
         ${dateField('eDate', 'Entry date', TODAY)}
         <div class="field"><label>Lot</label><select id="seLot">${lots.map(l => `<option value="${l.id}">${esc(itemNameOf(l.itemId))} · ${formatQty(l.qty)} added ${fmtDateShort(l.dateAdded)} @ ${formatINR(l.originalRate)}</option>`).join('')}</select></div>
@@ -6171,6 +6734,12 @@
     }
     function wasteEntryForm() {
       const lots = state.inventory.filter(l => l.qty > 0 && l.status === 'Available');
+      if (lots.length === 0) {
+        openModal('Record Waste', `<div class="empty-state"><h3>No stock available to mark as waste.</h3><p class="text-muted text-sm mt-3">Stock arrives from a confirmed cart\u2019s remaining quantity, or use Add Stock Manually on the Inventory screen.</p></div>`, [
+          { label: 'Close', cls: 'btn-secondary', onClick: () => {} }
+        ]);
+        return;
+      }
       openModal('Record Waste', `
         ${dateField('eDate', 'Entry date', TODAY)}
         <div class="field"><label>Lot</label><select id="weLot">${lots.map(l => `<option value="${l.id}">${esc(itemNameOf(l.itemId))} · ${formatQty(l.qty)} @ ${formatINR(l.originalRate)}</option>`).join('')}</select></div>
@@ -6210,6 +6779,7 @@
       const p = state.payables.find(x => x.id === gv('#stPayable'));
       const amt = parseFloat(gv('#st2Amt')) || 0;
       const date = gv('#eDate') || TODAY;
+      if (date > TODAY) { showToast('Entries can\u2019t be booked in the future.', 'error'); return false; }
       if (!p) { showToast('No payable selected.', 'error'); return false; }
       if (amt <= 0) { showToast('Enter amount.', 'error'); return false; }
       if (r2(amt) > p.remaining) { showToast('More than remaining payable.', 'error'); return false; }
@@ -6232,6 +6802,7 @@
     }
     function saveVoucherEntry() {
       const date = gv('#eDate') || TODAY;
+      if (date > TODAY) { showToast('Entries can\u2019t be booked in the future.', 'error'); return false; }
       const amt = parseFloat(gv('#vAmt')) || 0;
       if (amt <= 0) { showToast('Enter amount.', 'error'); return false; }
       state.dayEntries.push({ id: 'de' + ('' + (++state.seq.entry)), date, type: 'voucher', cat: gv('#vCat'), catAmount: r2(amt), amount: r2(amt), note: gv('#vNote') });
@@ -6252,9 +6823,12 @@
     function saveDeductionEntry() {
       const inst = instById(gv('#dInst')); const amt = parseFloat(gv('#dAmt')) || 0;
       const date = gv('#eDate') || TODAY;
+      if (date > TODAY) { showToast('Entries can\u2019t be booked in the future.', 'error'); return false; }
       if (!inst || amt <= 0) { showToast('Pick institution & amount.', 'error'); return false; }
       const bills = state.bills.filter(b => b.instId === inst.id);
-      const open = bills.find(b => r2(b.net - state.payments.filter(p => p.against === b.id).reduce((s, p) => s + p.amount, 0)) > 0);
+      const open = bills.find(b => billPending(b) > 0.001);
+      const pending = open ? billPending(open) : instSummary(inst.id).accrued;
+      if (amt > pending + 0.001) { showToast(`Deduction exceeds pending ${formatINR(r2(pending))}.`, 'error'); return false; }
       const d = { date, reason: gv('#dReason') || 'Quality', amount: r2(amt), note: gv('#dNote') || '' };
       if (open) { open.deductions.push(d); open.net = r2(open.gross - open.deductions.reduce((s, x) => s + x.amount, 0)); showToast('Deduction applied to ' + open.number); }
       else { d.instId = inst.id; state.dedPending.push(d); showToast('Deduction pending — applied on next bill.'); }
@@ -6262,15 +6836,25 @@
     }
 
     /* ========== S28 History ========== */
-    let histFilter = 'today', histCustom = [TODAY, TODAY];
+    /* History opens on This Month, not Today: the ledger's most recent entry is
+       usually yesterday's cart, so a Today default greeted every user with
+       "No transactions in this range". */
+    let histFilter = 'month', histCustom = [TODAY, TODAY];
     function renderHistory() {
-      const ids = { today: 'histFiltToday', '7d': 'histFilt7d', month: 'histFiltMonth', custom: 'histFiltCustom' };
+      const ids = { today: 'histFiltToday', yesterday: 'histFiltYesterday', '7d': 'histFilt7d', month: 'histFiltMonth', prev: 'histFiltPrev', custom: 'histFiltCustom' };
       $$('[id^="histFilt"]').forEach(el => el.classList.remove('btn-primary'));
       const el = ids[histFilter] && $(ids[histFilter]); if (el) el.classList.add('btn-primary');
       let from, to = TODAY;
       if (histFilter === 'today') from = TODAY;
+      else if (histFilter === 'yesterday') from = addDays(TODAY, -1), to = addDays(TODAY, -1);
       else if (histFilter === '7d') from = addDays(TODAY, -6);
       else if (histFilter === 'month') from = TODAY.slice(0, 7) + '-01';
+      else if (histFilter === 'prev') {
+        const [y, m] = TODAY.split('-').map(Number);
+        const firstPrev = new Date(y, m - 2, 1);
+        const lastPrev = new Date(y, m - 1, 0);
+        from = toISO(firstPrev); to = toISO(lastPrev);
+      }
       else from = histCustom[0], to = histCustom[1] > from ? histCustom[1] : TODAY;
       const days = {};
       state.transactions.forEach(t => { if (t.date >= from && t.date <= to) (days[t.date] = days[t.date] || []).push({ kind: 'trx', t }); });
@@ -6293,7 +6877,12 @@
           <div style="padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border-soft); display:flex; justify-content:space-between;">
             <div class="value" style="font-weight:700;">${fmtDateShort(d)}</div><div class="${dayPL < 0 ? 'value loss' : 'value profit'}">${fmtSign(dayPL)}</div>
           </div>${rows}</div>`;
-      }).join('') : '<div class="empty-state"><h3>No transactions in this range</h3><p class="text-muted text-sm mt-3">Complete a cart or add a day entry.</p></div>');
+      }).join('') : (() => {
+        const hasAny = state.transactions.length || state.dayEntries.length;
+        return `<div class="empty-state"><h3>No transactions in this range</h3>
+          <p class="text-muted text-sm mt-3">${hasAny ? 'There is earlier activity — widen the range to see it.' : 'Complete a cart or add a day entry to start the ledger.'}</p>
+          ${hasAny ? '<button class="btn btn-secondary mt-4" onclick="app.setHistFilter(\'7d\')">Show last 7 days</button>' : ''}</div>`;
+      })());
     }
     function setHistFilter(f) { histFilter = f; if (f === 'custom') customRangeModal((a, b) => { histCustom = [a, b]; renderHistory(); }); else renderHistory(); }
     function customRangeModal(cb) {
@@ -6328,7 +6917,7 @@
           const periodEnded = TODAY > t.end;
           const daysPastEnd = periodEnded ? daysBetween(t.end, TODAY) : 0;
           if (periodEnded && daysPastEnd >= overdueAlertDays && d.totalPending > 0) {
-            alerts.push({ kind: 'paymentDue', title: 'Payment Due Alert', sub: inst.name + ` — ₹${formatINR(d.totalPending)} pending, ${daysPastEnd} days past tender end`, badge: 'Due', color: 'danger', go: '#screen-dues' });
+            alerts.push({ kind: 'paymentDue', title: 'Payment Due Alert', sub: inst.name + ` — ${formatINR(d.totalPending)} pending, ${daysPastEnd} days past tender end`, badge: 'Due', color: 'danger', go: '#screen-dues' });
           }
         });
         // Long-Pending Dues (§14): aging beyond contractor-set threshold (default 30 days)
@@ -6356,7 +6945,10 @@
       html('#attnList', alerts.length ? alerts.map(a => `
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('${a.go}')">
           <div class="main"><div class="value">${esc(a.title)}</div><div class="sub">${a.sub}</div></div>
-          <span class="text-sm" style="color:var(--${a.color})">${esc(a.badge)}</span>
+          <div class="row" style="gap: var(--space-2); align-items:center; flex:0 0 auto;">
+            <span class="text-sm" style="color:var(--${a.color}); white-space:nowrap;">${esc(a.badge)}</span>
+            <span class="text-muted" aria-hidden="true">›</span>
+          </div>
         </div>`).join('') : '<div class="empty-state"><h3>All clear ✓</h3><p class="text-muted text-sm mt-3">No active alerts right now.</p></div>');
       txt('#btnAttnCount', String(alerts.length));
     }
@@ -6375,6 +6967,19 @@
       });
       return { rev: r2(rev), cost: r2(cost), exp: r2(exp), profit: r2(profit) };
     }
+    /* Deductions are negative revenue (formula 15). One helper keeps the overall,
+       daily, institution and contract views reconciling with each other. */
+    function allDeductions() {
+      const out = [];
+      state.bills.forEach(b => (b.deductions || []).forEach(d => out.push(Object.assign({ instId: b.instId, billId: b.id }, d))));
+      state.dedPending.forEach(d => out.push(d));
+      return out;
+    }
+    function deductionsOn(date) { return r2(allDeductions().filter(d => d.date === date).reduce((s, d) => s + d.amount, 0)); }
+    function deductionsInRange(from, to) { return r2(allDeductions().filter(d => (!from || d.date >= from) && (!to || d.date <= to)).reduce((s, d) => s + d.amount, 0)); }
+    function deductionsForInst(instId, from, to) {
+      return r2(allDeductions().filter(d => d.instId === instId && (!from || d.date >= from) && (!to || d.date <= to)).reduce((s, d) => s + d.amount, 0));
+    }
     function overallTotals() {
       let inv = 0, rev = 0, exp = 0, profit = 0;
       state.transactions.forEach(t => { inv += (t.newPurchaseCost || 0) + (t.inventoryUsedCost || 0) + (t.expensesTotal || 0); rev += t.revenue; exp += t.expensesTotal; profit += t.profit; });
@@ -6386,7 +6991,9 @@
         else if (e.type === 'voucher') { exp += e.amount; inv += e.amount; profit -= e.amount; }
         // settlement: cash-only, no P&L impact
       });
-      return { inv: r2(inv), rev: r2(rev), exp: r2(exp), profit: r2(profit) };
+      const ded = r2(allDeductions().reduce((s, d) => s + d.amount, 0));
+      profit = r2(profit - ded);
+      return { inv: r2(inv), rev: r2(rev), exp: r2(exp), deductions: ded, effectiveRev: r2(rev - ded), profit };
     }
     function renderHome() {
       const s = cartSummary();
@@ -6409,18 +7016,21 @@
       } else if (tToday) {
         const totRev = r2(tToday.revenue + deToday.rev);
         const totCost = r2(tToday.totalCost + deToday.cost + deToday.exp);
-        const totProfit = r2(totRev - totCost);
+        const dedToday = deductionsOn(TODAY);
+        const totProfit = r2(totRev - totCost - dedToday);
         cards = `
           <div class="metric"><strong>${formatINR(totCost)}</strong><span>Day Investment</span></div>
           <div class="metric"><strong>${formatINR(totRev)}</strong><span>Day Revenue</span></div>
           <div class="metric ${totProfit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(totProfit)}</strong><span>Day Profit</span></div>
           <div class="metric"><strong>${totRev ? ((totProfit / totRev) * 100).toFixed(2) : '—'}%</strong><span>Day Margin</span></div>`;
       } else if (deToday.rev > 0 || deToday.cost > 0 || deToday.exp > 0 || deToday.profit !== 0) {
+        const dedToday = deductionsOn(TODAY);
+        const dayProfit = r2(deToday.profit - dedToday);
         cards = `
           <div class="metric"><strong>${formatINR(deToday.cost + deToday.exp)}</strong><span>Day Investment</span></div>
           <div class="metric"><strong>${formatINR(deToday.rev)}</strong><span>Day Revenue</span></div>
-          <div class="metric ${deToday.profit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(deToday.profit)}</strong><span>Day Profit</span></div>
-          <div class="metric"><strong>${deToday.rev ? ((deToday.profit / deToday.rev) * 100).toFixed(2) : '—'}%</strong><span>Day Margin</span></div>`;
+          <div class="metric ${dayProfit >= 0 ? 'green' : 'red'}"><strong>${fmtSign(dayProfit)}</strong><span>Day Profit</span></div>
+          <div class="metric"><strong>${deToday.rev ? ((dayProfit / deToday.rev) * 100).toFixed(2) : '—'}%</strong><span>Day Margin</span></div>`;
       } else {
         cards = `<div class="metric"><strong>—</strong><span>No supply yet today</span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div><div class="metric"><strong>—</strong><span></span></div>`;
       }
@@ -6486,7 +7096,7 @@
         html('#homeCartInfo', `
           <div class="list-row">
             <div class="main">
-              <div class="value" style="font-size: var(--text-base);">${state.cart.items.length} Item${state.cart.items.length === 1 ? '' : 's'} · ${formatQty(s.supQty)} kg${state.cart.mode === 'correction' ? ' · Correction of ' + esc(state.cart.correctionTrxId || '') : ''}</div>
+              <div class="value" style="font-size: var(--text-base);">${state.cart.items.length} line${state.cart.items.length === 1 ? '' : 's'} · ${qtyByUnit(state.cart.items.map(l => ({ qty: lineSupply(l), unit: itemUnit(l) })))}${state.cart.mode === 'correction' ? ' · Correction of ' + esc(state.cart.correctionTrxId || '') : ''}</div>
               <div class="sub">Investment ${formatINR(s.investment)} · Expected Revenue ${formatINR(s.revenue)}${s.expenses ? ' · Expenses ' + formatINR(s.expenses) : ''}</div>
             </div>
             <div class="value ${s.profit >= 0 ? 'profit' : 'loss'}">${fmtSign(s.profit)}</div>
@@ -6498,7 +7108,7 @@
       txt('#homePendingAmt', `Pending ${formatINR(totalPendingAll())}`);
       html('#homePendingRows', `
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('#screen-dues')">
-          <div class="main"><div class="value">Billed pending</div><div class="sub">${state.institutions.filter(i => instSummary(i.id).totalPending > 0).map(i => i.name + ' ' + formatINR(instSummary(i.id).totalPending)).join(' · ') || 'No open bills'}</div></div>
+          <div class="main"><div class="value">Billed pending</div><div class="sub">${state.institutions.filter(i => instSummary(i.id).billed > 0).map(i => i.name + ' ' + formatINR(instSummary(i.id).billed)).join(' · ') || 'No open bills'}</div></div>
           <div class="value" style="color:var(--fg-2)">${formatINR(billedTotal)}</div>
         </div>
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('#screen-dues')">
@@ -6510,7 +7120,7 @@
       html('#homeInvRows', `
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('#screen-inventory')">
           <div class="main">
-            <div class="value" style="font-size: var(--text-base);">${formatQty(r2(lots.reduce((x, l) => x + l.qty, 0)))} kg Available</div>
+            <div class="value" style="font-size: var(--text-base);">${qtyByUnit(lots.map(l => ({ qty: l.qty, unit: itemIt(l.itemId) })))} Available</div>
             <div class="sub">Stock value ${formatINR(r2(lots.reduce((x, l) => x + l.qty * l.originalRate, 0)))} · ${lots.length} item${lots.length === 1 ? '' : 's'}</div>
           </div>
           <span class="badge badge-${oldCount > 0 ? 'warn' : 'gray'}" style="font-size: var(--text-xs);">${oldCount > 0 ? oldCount + ' need' + (oldCount === 1 ? 's' : '') + ' attention' : 'All fresh'}</span>
@@ -6526,7 +7136,10 @@
       html('#homeAttnRows', alerts.slice(0, 3).map(a => `
         <div class="list-row" style="cursor:pointer;" onclick="app.alertGo('${a.go}')">
           <div class="main"><div class="value">${esc(a.title)}</div><div class="sub">${a.sub}</div></div>
-          <span class="text-sm" style="color:var(--${a.color})">${esc(a.badge)}</span>
+          <div class="row" style="gap: var(--space-2); align-items:center; flex:0 0 auto;">
+            <span class="text-sm" style="color:var(--${a.color}); white-space:nowrap;">${esc(a.badge)}</span>
+            <span class="text-muted" aria-hidden="true">›</span>
+          </div>
         </div>`).join('') || '<div class="list-row"><div class="main"><div class="value">No alerts 🎉</div><div class="sub">Everything is within thresholds</div></div></div>');
       updateCartIndicator();
     }
@@ -6544,18 +7157,18 @@
       return list.map(g => `<div class="list-row"><div class="main"><div class="value">${esc(g.label)}</div><div class="sub">${esc(g.sub)}</div></div><div class="value ${g.profit < 0 ? 'loss' : 'profit'}">${fmtSign(g.profit)}</div></div>`).join('');
     }
     function groupByInst(trxs) {
+      const dates = trxs.map(t => t.date).sort();
+      const from = dates[0], to = dates[dates.length - 1];
       return state.institutions.map(inst => {
-        let rev = 0, cost = 0, qty = 0, assignedExp = 0;
+        let rev = 0, cost = 0, assignedExp = 0; const qtyEntries = [];
         trxs.forEach(t => {
-          t.allocations.forEach(a => { if (a.instId === inst.id) { rev += a.revenue; cost += a.cost; qty += (a.netQty != null ? a.netQty : a.qty); } });
+          t.allocations.forEach(a => { if (a.instId === inst.id) { rev += a.revenue; cost += a.cost; qtyEntries.push({ qty: (a.netQty != null ? a.netQty : a.qty), unit: itemIt(a.itemId) }); } });
           t.expenses.forEach(e => { if (e.assignedTo === inst.id) assignedExp += e.amount; });
         });
-        // Subtract deductions for Effective Revenue = Supply − Deductions (§7.5.7, §11)
-        const billDed = r2(state.bills.filter(b => b.instId === inst.id).reduce((s, b) => s + b.deductions.reduce((sd, d) => sd + d.amount, 0), 0));
-        const pendDed = r2(state.dedPending.filter(d => d.instId === inst.id).reduce((s, d) => s + d.amount, 0));
-        const deductions = r2(billDed + pendDed);
+        // Effective Revenue = Supply − Deductions for the same date window (§7.5.7, §11)
+        const deductions = deductionsForInst(inst.id, from, to);
         const effectiveRev = r2(rev - deductions);
-        return { label: inst.name, sub: `${formatQty(r2(qty))} kg · ${formatINR(effectiveRev)} → ${formatINR(cost)}${assignedExp > 0 ? ` · exp −${formatINR(assignedExp)}` : ''}${deductions > 0 ? ` · ded −${formatINR(deductions)}` : ''}`, profit: r2(effectiveRev - cost - assignedExp) };
+        return { label: inst.name, sub: `${qtyByUnit(qtyEntries)} · ${formatINR(effectiveRev)} → ${formatINR(cost)}${assignedExp > 0 ? ` · exp −${formatINR(assignedExp)}` : ''}${deductions > 0 ? ` · ded −${formatINR(deductions)}` : ''}`, profit: r2(effectiveRev - cost - assignedExp) };
       }).filter(g => g.profit !== 0 || /→/.test(g.sub));
     }
     function groupByVeg(trxs) {
@@ -6597,20 +7210,21 @@
       const entries = days.map(d => {
         const trxs = state.transactions.filter(t => t.date === d);
         const entries = state.dayEntries.filter(e => e.date === d);
-        let pl = r2(trxs.reduce((s, t) => s + t.profit, 0) + entries.reduce((s, e) => s + dayEntryProfit(e), 0));
+        const ded = deductionsOn(d);
+        let pl = r2(trxs.reduce((s, t) => s + t.profit, 0) + entries.reduce((s, e) => s + dayEntryProfit(e), 0) - ded);
         let inv = plAggregator(trxs);
-        return { label: fmtDateShort(d), sub: `Investment ${formatINR(inv.cost)} · Revenue ${formatINR(inv.revenue)} · Expenses ${formatINR(inv.exp)}`, profit: pl, date: d /* ok */ };
+        return { label: fmtDateShort(d), sub: `Investment ${formatINR(inv.cost)} · Revenue ${formatINR(inv.revenue)} · Expenses ${formatINR(inv.exp)}${ded ? ' · Deductions −' + formatINR(ded) : ''}`, profit: pl, date: d /* ok */ };
       });
       return entries;
     }
     function weekStart(d) { const dt = new Date(d + 'T00:00:00'); const dow = dt.getDay() === 0 ? 6 : dt.getDay() - 1; return addDays(d, -dow); }
     function renderPL() {
       const o = overallTotals();
-      const metricGrid = $('#screen-pl .metric-grid');
+      const metricGrid = $('#plMetrics');
       if (metricGrid) metricGrid.innerHTML = `
         <div class="metric"><strong>${formatINR(o.inv)}</strong><span>Total Investment</span></div>
-        <div class="metric"><strong>${formatINR(o.rev)}</strong><span>Total Revenue</span></div>
-        <div class="metric"><strong>${formatINR(o.exp)}</strong><span>Total Expenses</span></div>
+        <div class="metric"><strong>${formatINR(o.effectiveRev)}</strong><span>Effective Revenue</span></div>
+        <div class="metric"><strong>${formatINR(o.deductions)}</strong><span>Deductions</span></div>
         <div class="${o.profit >= 0 ? 'metric green' : 'metric red'}"><strong>${fmtSign(o.profit)}</strong><span>Overall Profit</span></div>`;
       [['#plTabInst', 'inst'], ['#plTabDaily', 'daily'], ['#plTabWeekly', 'weekly'], ['#plTabMonthly', 'monthly'], ['#plTabContract', 'contract'], ['#plTabVeg', 'veg'], ['#plTabOverall', 'overall'], ['#plTabCustom', 'custom']].forEach(([id, tab]) => { const el = $(id); if (el) el.classList.toggle('btn-primary', plTab === tab); });
       let content = '';
@@ -6618,9 +7232,10 @@
         content = `<div class="card"><div style="padding: var(--space-5);">
           <p class="eyebrow">Overall lifetime</p>
           <div class="list-row"><div class="main"><div class="value">Investment</div><div class="sub">new purchase + inventory used + expenses</div></div><div class="value">${formatINR(o.inv)}</div></div>
-          <div class="list-row"><div class="main"><div class="value">Revenue</div></div><div class="value">${formatINR(o.rev)}</div></div>
-          <div class="list-row"><div class="main"><div class="value">Expenses</div></div><div class="value">${formatINR(o.exp)}</div></div>
-          <div class="list-row"><div class="main"><div class="value">Profit</div><div class="sub">${o.rev > 0 ? (o.profit / o.rev * 100).toFixed(2) : 0}% margin</div></div><div class="value ${o.profit >= 0 ? 'profit' : 'loss'}">${fmtSign(o.profit)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Supply revenue</div><div class="sub">institution supply + inventory sales</div></div><div class="value">${formatINR(o.rev)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Deductions</div><div class="sub">short payments, quality &amp; weight claims</div></div><div class="value loss">−${formatINR(o.deductions)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Effective revenue</div><div class="sub">supply − deductions</div></div><div class="value">${formatINR(o.effectiveRev)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Profit</div><div class="sub">${o.effectiveRev > 0 ? (o.profit / o.effectiveRev * 100).toFixed(2) : 0}% margin</div></div><div class="value ${o.profit >= 0 ? 'profit' : 'loss'}">${fmtSign(o.profit)}</div></div>
           <p class="text-muted text-sm mt-3">Profit counts when a cart is confirmed or a day entry is recorded — never mixed with cash.</p>
         </div></div>`;
       } else if (plTab === 'daily') {
@@ -6631,8 +7246,9 @@
         state.dayEntries.forEach(e => { const w = weekStart(e.date); map[w] = map[w] || []; map[w].push({ dayEntry: e }); });
         content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Weekly</p>${Object.keys(map).sort().reverse().map(w => {
           const agg = plAggregator(map[w].filter(x => !x.dayEntry));
-          const pl = r2(map[w].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0));
-          return `<div class="list-row"><div class="main"><div class="value">Week of ${fmtDateShort(w)}</div><div class="sub">Revenue ${formatINR(agg.revenue)} · Cost ${formatINR(agg.cost)}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>`;
+          const ded = deductionsInRange(w, addDays(w, 6));
+          const pl = r2(map[w].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0) - ded);
+          return `<div class="list-row"><div class="main"><div class="value">Week of ${fmtDateShort(w)}</div><div class="sub">Revenue ${formatINR(agg.revenue)} · Cost ${formatINR(agg.cost)}${ded ? ' · Deductions −' + formatINR(ded) : ''}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>`;
         }).join('') || '<p class="text-muted text-sm">—</p>'}</div></div>`;
       } else if (plTab === 'monthly') {
         const map = {};
@@ -6640,22 +7256,25 @@
         state.dayEntries.forEach(e => { const m = e.date.slice(0, 7); map[m] = map[m] || []; map[m].push({ dayEntry: e }); });
         content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Monthly</p>${Object.keys(map).sort().reverse().map(m => {
           const agg = plAggregator(map[m].filter(x => !x.dayEntry));
-          const pl = r2(map[m].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0));
-          return `<div class="list-row"><div class="main"><div class="value">${m}</div><div class="sub">Revenue ${formatINR(agg.revenue)} · Cost ${formatINR(agg.cost)}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>`;
+          const ded = deductionsInRange(m + '-01', m + '-31');
+          const pl = r2(map[m].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0) - ded);
+          return `<div class="list-row"><div class="main"><div class="value">${m}</div><div class="sub">Revenue ${formatINR(agg.revenue)} · Cost ${formatINR(agg.cost)}${ded ? ' · Deductions −' + formatINR(ded) : ''}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>`;
         }).join('') || '<p class="text-muted text-sm">—</p>'}</div></div>`;
       } else if (plTab === 'inst') content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Institution-wise</p>${rowsForGroups(groupByInst(state.transactions))}</div></div>`;
       else if (plTab === 'contract') content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Contract-wise (Tender)</p>${rowsForGroups(groupByContract(state.transactions))}</div></div>`;
-      else if (plTab === 'veg') content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Vegetable-wise</p>${rowsForGroups(groupByVeg(state.transactions))}</div></div>`;
+      else if (plTab === 'veg') content = `<div class="card"><div style="padding: var(--space-5);"><p class="eyebrow">Vegetable-wise</p>${rowsForGroups(groupByVeg(state.transactions))}<p class="text-muted text-sm mt-3">Deductions are institution-level and are not split across items.</p></div></div>`;
       else {
         const range = state.transactions.filter(t => t.date >= plCustom[0] && t.date <= plCustom[1]);
         const eR = state.dayEntries.filter(e => e.date >= plCustom[0] && e.date <= plCustom[1]);
         const agg = plAggregator(range);
-        const pl = r2(range.reduce((x, t) => x + t.profit, 0) + eR.reduce((x, e) => x + dayEntryProfit(e), 0));
+        const ded = deductionsInRange(plCustom[0], plCustom[1]);
+        const pl = r2(range.reduce((x, t) => x + t.profit, 0) + eR.reduce((x, e) => x + dayEntryProfit(e), 0) - ded);
         content = `<div class="card"><div style="padding: var(--space-5);">
           <p class="eyebrow">Custom — ${fmtDateShort(plCustom[0])} → ${fmtDateShort(plCustom[1])}</p>
-          <div class="list-row"><div class="main"><div class="value">Transactions</div><div class="sub">${range.length} cart${range.length === 1 ? '' : 's'}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Transactions</div><div class="sub">${range.length} cart${range.length === 1 ? '' : 's'} · ${eR.length} day entr${eR.length === 1 ? 'y' : 'ies'}</div></div><div class="value ${pl < 0 ? 'loss' : 'profit'}">${fmtSign(pl)}</div></div>
           <div class="list-row"><div class="main"><div class="value">Investment</div></div><div class="value">${formatINR(agg.cost)}</div></div>
           <div class="list-row"><div class="main"><div class="value">Revenue</div></div><div class="value">${formatINR(agg.revenue)}</div></div>
+          <div class="list-row"><div class="main"><div class="value">Deductions</div></div><div class="value loss">−${formatINR(ded)}</div></div>
           <button class="btn btn-secondary mt-4" style="width:100%;" onclick="app.setPLCustom()">Change range</button>
         </div></div>`;
       }
@@ -6685,10 +7304,13 @@
         </div>`).join(''));
     }
     function openReport(type) {
+      state.reportType = type;
+      state.reportRange = type === 'Custom Date Range' ? [addDays(TODAY, -30), TODAY] : [addDays(TODAY, -30), TODAY];
       navigate('#screen-report-detail');
       txt('#rptDetTitle', type + ' Report');
-      txt('#rptDetSub', 'Structured summary — English · ₹ grouped');
-      state.reportType = type; state.reportRange = type === 'Custom Date Range' ? [histCustom[0], histCustom[1]] : [addDays(TODAY, -30), TODAY];
+      txt('#rptDetSub', type === 'Custom Date Range'
+        ? `${fmtDateShort(state.reportRange[0])} → ${fmtDateShort(state.reportRange[1])} · English · ₹ grouped`
+        : 'Structured summary — English · ₹ grouped');
       renderReportDetail();
     }
     function reportRows() {
@@ -6703,19 +7325,30 @@
           const trxs = state.transactions.filter(x => x.date === d);
           const ents = state.dayEntries.filter(x => x.date === d);
           const agg = plAggregator(trxs);
-          const pl = r2(trxs.reduce((s, x) => s + x.profit, 0) + ents.reduce((s, e) => s + dayEntryProfit(e), 0));
+          const pl = r2(trxs.reduce((s, x) => s + x.profit, 0) + ents.reduce((s, e) => s + dayEntryProfit(e), 0) - deductionsOn(d));
           return [fmtDateShort(d), formatINR(agg.cost), formatINR(agg.revenue), fmtSign(pl)];
         });
         if (t === 'Weekly') {
           const wk = {};
-          state.transactions.forEach(x => { const w = weekStart(x.date); wk[w] = wk[w] || { rev: 0, cost: 0 }; wk[w].rev += x.revenue; wk[w].cost += x.totalCost; });
-          state.dayEntries.forEach(e => { const w = weekStart(e.date); wk[w] = wk[w] || { rev: 0, cost: 0 }; wk[w].cost += (dayEntryProfit(e) < 0 ? -dayEntryProfit(e) : 0); wk[w].rev += (dayEntryProfit(e) > 0 ? dayEntryProfit(e) : 0); });
-          return Object.keys(wk).sort().reverse().map(w => ['Week of ' + fmtDateShort(w), formatINR(wk[w].cost), formatINR(wk[w].rev), fmtSign(r2(wk[w].rev - wk[w].cost))]);
+          state.transactions.forEach(x => { const w = weekStart(x.date); wk[w] = wk[w] || []; wk[w].push(x); });
+          state.dayEntries.forEach(e => { const w = weekStart(e.date); wk[w] = wk[w] || []; wk[w].push({ dayEntry: e }); });
+          return Object.keys(wk).sort().reverse().map(w => {
+            const agg = plAggregator(wk[w].filter(x => !x.dayEntry));
+            const ded = deductionsInRange(w, addDays(w, 6));
+            const pl = r2(wk[w].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0) - ded);
+            return ['Week of ' + fmtDateShort(w), formatINR(agg.cost), formatINR(agg.revenue), fmtSign(pl)];
+          });
         }
         if (t === 'Monthly') {
           const mo = {};
-          state.transactions.forEach(x => { const m = x.date.slice(0, 7); mo[m] = mo[m] || { rev: 0, cost: 0 }; mo[m].rev += x.revenue; mo[m].cost += x.totalCost; });
-          return Object.keys(mo).sort().reverse().map(m => [m, formatINR(mo[m].cost), formatINR(mo[m].rev), fmtSign(r2(mo[m].rev - mo[m].cost))]);
+          state.transactions.forEach(x => { const m = x.date.slice(0, 7); mo[m] = mo[m] || []; mo[m].push(x); });
+          state.dayEntries.forEach(e => { const m = e.date.slice(0, 7); mo[m] = mo[m] || []; mo[m].push({ dayEntry: e }); });
+          return Object.keys(mo).sort().reverse().map(m => {
+            const agg = plAggregator(mo[m].filter(x => !x.dayEntry));
+            const ded = deductionsInRange(m + '-01', m + '-31');
+            const pl = r2(mo[m].reduce((s, x) => s + (x.dayEntry ? dayEntryProfit(x.dayEntry) : x.profit), 0) - ded);
+            return [m, formatINR(agg.cost), formatINR(agg.revenue), fmtSign(pl)];
+          });
         }
         if (t === 'Institution') return groupByInst(state.transactions).map(g => [g.label, g.sub, fmtSign(g.profit)]);
         if (t === 'Contract (Tender)') return groupByContract(state.transactions).map(g => [g.label, g.sub, fmtSign(g.profit)]);
@@ -6743,15 +7376,39 @@
           return Object.entries(map).map(([k, v]) => [itemNameOf(k), `${formatQty(v.qty)} ${itemIt(k)}`, '−' + formatINR(v.cost)]);
         }
         if (t === 'Custom Date Range') {
-          return state.transactions.filter(x => x.date >= state.reportRange[0] && x.date <= state.reportRange[1]).map(x => [x.id + ' (' + fmtDateShort(x.date) + ')', `Cost ${formatINR(x.totalCost)} · Rev ${formatINR(x.revenue)}`, fmtSign(x.profit)]);
+          const inRange = state.transactions.filter(x => x.date >= state.reportRange[0] && x.date <= state.reportRange[1]);
+          const ents = state.dayEntries.filter(e => e.date >= state.reportRange[0] && e.date <= state.reportRange[1]);
+          const ded = deductionsInRange(state.reportRange[0], state.reportRange[1]);
+          return inRange.map(x => [x.id + ' (' + fmtDateShort(x.date) + ')', `Cost ${formatINR(x.totalCost)} · Rev ${formatINR(x.revenue)}`, fmtSign(x.profit)])
+            .concat(ents.map(e => [entryLabel(e.type) + ' (' + fmtDateShort(e.date) + ')', entryHead(e), fmtSign(dayEntryProfit(e))]))
+            .concat(ded > 0 ? [['Deductions in range', 'Institution short payments & claims', '−' + formatINR(ded)]] : []);
         }
         return [];
       })();
+      const EMPTY_COPY = {
+        'Spoilage by Item': ['No spoilage recorded', 'Waste and loss entries appear here once you mark stock as unusable.'],
+        'Expense': ['No expenses recorded', 'Add a transport, labour or packaging expense during a cart, or record a voucher entry.'],
+        'Inventory': ['No stock on hand', 'Stock arrives from a confirmed cart\'s remaining quantity, or from Add Stock Manually on the Inventory screen.'],
+        'Payables': ['No seller payables', 'On-credit purchases create a payable with a due date.'],
+        'Payment Dues': ['No institutions to report', 'Add an institution to track dues.'],
+        'Custom Date Range': ['No transactions in this range', 'Widen the date range to include a completed cart.']
+      };
+      const empty = EMPTY_COPY[t] || ['No data in this period', 'Complete a cart or add a day entry to populate this report.'];
       html('#rptDetContent', rows.length ? `
         <div class="card"><div style="padding: var(--space-5);">
           <div class="list-row"><div class="main"><div class="value" style="font-weight:700;">Item</div><div class="sub">Detail</div></div><div class="value" style="font-weight:700;">Result</div></div>
           ${rows.map(r => `<div class="list-row"><div class="main"><div class="value">${esc(r[0])}</div><div class="sub">${esc(r[1] == null ? '' : String(r[1]))}</div></div><div class="value">${esc(r[2] == null ? '' : String(r[2]))}</div></div>`).join('')}
-        </div></div>` : `<div class="empty-state"><h3>No data in this period</h3></div>`);
+        </div></div>` : `<div class="empty-state"><h3>${esc(empty[0])}</h3><p class="text-muted text-sm mt-3">${esc(empty[1])}</p>
+          ${t === 'Custom Date Range' ? '<button class="btn btn-secondary mt-4" onclick="app.setReportRange()">Change range</button>' : ''}</div>`);
+    }
+    /* Custom-range reports need their own range control — the P&L and History ranges
+       are separate concerns and must not silently drive each other. */
+    function setReportRange() {
+      customRangeModal((a, b) => {
+        state.reportRange = [a, b];
+        txt('#rptDetSub', `${fmtDateShort(a)} → ${fmtDateShort(b)} · English · ₹ grouped`);
+        renderReportDetail();
+      });
     }
     function exportReport() {
       const t = state.reportType || 'P/L';
@@ -6823,7 +7480,7 @@
       sv('#bizName', state.businessName);
       sv('#bizCurrency', state.currency);
       sv('#bizDefaultUnit', state.defaultUnit);
-      const shelf = $('#bizShelfLife'); if (shelf) shelf.value = state.settings.overdueAlertDays;
+      const shelf = $('#bizShelfLife'); if (shelf) shelf.value = state.settings.shelfLifeDefault;
     }
     function saveBusiness(e) {
       if (e) e.preventDefault();
@@ -6831,7 +7488,7 @@
       state.currency = gv('#bizCurrency') || '₹';
       state.defaultUnit = gv('#bizDefaultUnit') || 'kg';
       const shelf = $('#bizShelfLife');
-      if (shelf) state.settings.overdueAlertDays = parseInt(shelf.value, 10) || state.settings.overdueAlertDays;
+      if (shelf) state.settings.shelfLifeDefault = parseInt(shelf.value, 10) || state.settings.shelfLifeDefault;
       saveState(); showToast('Business settings saved ✓');
     }
 
@@ -6956,13 +7613,36 @@
         <input type="text" id="dl7Text" placeholder='type DELETE to confirm' style="width:100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); font-family: monospace;" />`;
       showDL('overlay-dl7');
     }
+    /* A true wipe: keep the seed catalogue and default settings (an empty item list
+       would make the app unusable), but drop every record the user created. Falling
+       back to seedState() here used to restore the demo transaction and demo
+       institutions, so "Delete All Data" never actually left an empty ledger. */
+    function emptyState() {
+      const s = seedState();
+      s.setupDone = false;
+      s.businessName = '';
+      s.transactions = [];
+      s.inventory = [];
+      s.payables = [];
+      s.bills = [];
+      s.payments = [];
+      s.dedPending = [];
+      s.dayEntries = [];
+      s.lastRates = {};
+      s.institutions = [];
+      s.seq = { trx: 1, inst: 0, item: 16, lot: 0, pay: 1, bill: 1, paym: 1, entry: 1, line: 0, exp: 0 };
+      s.cart = { date: TODAY, mode: 'day', correctionTrxId: null, items: [], allocations: {}, remaining: {}, rejected: {}, expenses: [], confirmed: false };
+      s.lastBackup = null;
+      s.currentScreen = 'welcome';
+      return s;
+    }
     function deleteAllConfirmed() {
       const typed = (gv('#dl7Text') || '').trim();
       if (typed !== 'DELETE') { showToast('Type exactly "DELETE" to confirm.', 'error'); showDL('overlay-dl7'); return; }
       hideDL('overlay-dl7');
       try { localStorage.removeItem(LS_KEY); } catch (e) {}
-      state = seedState();
-      state.setupDone = false;
+      state = emptyState();
+      saveState();
       showToast('All data deleted — fresh start.');
       navigate('#screen-welcome');
     }
@@ -7024,7 +7704,18 @@
         }
       });
 
-      addEv('#btnBack', () => { const target = backMap[`#screen-${state.currentScreen}`]; if (target) navigate(target); });
+      addEv('#btnBack', () => {
+        /* Prefer the recorded history, then the declared parent. Never strand the
+           user: if neither exists, fall back to Home. */
+        const here = `#screen-${state.currentScreen}`;
+        while (navStack.length) {
+          const prev = navStack.pop();
+          if (prev && prev !== here && $(prev)) { navigate(prev); return; }
+        }
+        const target = backMap[here];
+        if (target) { navigate(target); return; }
+        if (!['home', 'login', 'splash', 'welcome'].includes(state.currentScreen)) navigate('#screen-home');
+      });
       $$('.bottom-nav a').forEach(a => a.addEventListener('click', (e) => {
         e.preventDefault();
         const map = { home: '#screen-home', veg: '#screen-veg', cart: '#screen-cart', inventory: '#screen-inventory', more: '#screen-more' };
@@ -7037,7 +7728,7 @@
       addEv('#btnTogglePin', togglePinVisibility);
       addEv('#btnForgotPin', forgotPinHelp);
       addEv('#btnUseDemo', fillDemoCredentials);
-      addEv('#moreSignOut', signOut);
+      addEv('#moreSignOut', signOutAsk);
 
       // What's New (update message)
       addEv('#btnUpdateBackHome', () => navigate('#screen-home'));
@@ -7182,7 +7873,12 @@
       addEv('#btnTmgmtBack', () => navigate('#screen-inst-profile'));
       addEv('#btnTmgmtAdd', addTenderModal);
       addEv('#btnTPBack', () => navigate('#screen-inst-profile'));
-      addEv('#btnTPAdd', () => setTenderPrice(state.selectedInstId, (instById(state.selectedInstId) && (instById(state.selectedInstId).tenders.find(t => TODAY <= t.end) || instById(state.selectedInstId).tenders[instById(state.selectedInstId).tenders.length - 1]) || {}).id));
+      addEv('#btnTPAdd', () => {
+        const inst = instById(state.selectedInstId);
+        const tender = inst && (inst.tenders.find(t => TODAY <= t.end) || inst.tenders[inst.tenders.length - 1]);
+        if (!tender) { showToast('Add a tender to this institution first.', 'error'); return; }
+        setTenderPrice(inst.id, tender.id);
+      });
       addEv('#btnRcvBack', () => navigate('#screen-inst-profile'));
       addEv('#btnDuesBack', () => navigate('#screen-home'));
       addEv('#btnPayBack', () => navigate('#screen-home'));
@@ -7195,14 +7891,19 @@
 
       addEv('#btnHistBack', () => navigate('#screen-home'));
       addEv('#histFiltToday', () => setHistFilter('today'));
+      addEv('#histFiltYesterday', () => setHistFilter('yesterday'));
       addEv('#histFilt7d', () => setHistFilter('7d'));
       addEv('#histFiltMonth', () => setHistFilter('month'));
+      addEv('#histFiltPrev', () => setHistFilter('prev'));
       addEv('#histFiltCustom', () => setHistFilter('custom'));
       const hAdd = $('#btnHistAdd'); if (hAdd) addEv('#btnHistAdd', addDayEntry);
       addEv('#btnTrxBack', () => navigate('#screen-history'));
       addEv('#btnTrxReopen', trxRevisionMenu);
       addEv('#btnTrxMemo', memoShare);
-      addEv('#btnTrxPhoto', () => attachPhoto(trxDetailId));
+      /* #btnTrxPhoto's behaviour depends on whether the transaction is locked
+         (Attach Photo vs Post-Lock Adjustment) and is assigned by renderTrxDetail.
+         A second static listener here fired attachPhoto() as well and stacked two
+         modals. */
       addEv('#btnOEBack', () => navigate('#screen-history'));
 
       [['#plTabOverall', 'overall'], ['#plTabDaily', 'daily'], ['#plTabWeekly', 'weekly'], ['#plTabMonthly', 'monthly'], ['#plTabInst', 'inst'], ['#plTabContract', 'contract'], ['#plTabVeg', 'veg'], ['#plTabCustom', 'custom']].forEach(([id, tab]) => addEv(id, () => setPLTab(tab)));
@@ -7258,21 +7959,27 @@
       }
       navigate('#screen-expenses');
     }
-    function openTrxAux(id) { navigate('#screen-trx-detail'); renderTrxDetail(id); }
+    /* The screen renderer fires during navigate() and reads trxDetailId, so the id
+       must be set BEFORE navigating — otherwise the renderer sees null and bounces
+       to History (tapping any transaction row was a dead end). */
+    function openTrxAux(id) { if (id) trxDetailId = id; trxTab = 'items'; navigate('#screen-trx-detail'); }
 
     /* ========== Expose app API for inline handlers ========== */
     window.app = Object.assign(window.app || {}, {
       state, navigate, goHome, showToast, formatINR, formatQty, fmtSign, fmtDateShort, openModal, closeModal, openKeypad, alertGo,
-      openItem, openAddItem, quickAdd, addToCart, editCartLine, removeCartLine, confirmRemoveLine, discardCartAsk, cartContinue, keypadButtons: wireKeypadButtons,
+      openItem, openAddItem, quickAdd, addToCart, editCartLine, removeCartLine, confirmRemoveLine, discardCartAsk, cartContinue, keypadButtons: wireKeypadButtons, signOut, signOutAsk,
       allocTab, autoSplit, customRate, undoRemaining, rejectedQtyFlow, editExpense, removeExpense, setTrxTab: (t) => { trxTab = t; renderTrxDetail(); },
       openInst, openAddItem, openInstEditor, deleteInstCheck, editTender, openTenderMgmt, setTenderPrice, tenderPicker, pickTender,
       openLot, addStockModal, useLotInSupply, sellLotModal, wasteLotModal, inventoryQuickActions, duplicateItemAsk, deleteTenderPriceAsk,
       addDayEntry, dayEntryFlow, settlePayable, prepareBillModal, recordPayModal, addDeductionModal,
-      openTrx, atenGo: alertGo, closeDL: hideDL, startCorrection, trxRevisionMenu, memoShare, openReport, setPLCustom,
+      openTrx, atenGo: alertGo, closeDL: hideDL, startCorrection, trxRevisionMenu, memoShare, openReport, setPLCustom, setReportRange, setHistFilter,
       removeCategory, removeReason, toggleItemActive, addExpenseModal, addPayDeduction, missingPriceFlow, startCorrectionFromHome, postLockAdjustment, attachPhoto, viewPhoto, editQuantity: null,
       openEditorOpen: openInstEditor
     });
-    function openTrx(id) { navigate('#screen-trx-detail'); renderTrxDetail(id); }
+    /* `state` is reassigned by restore / import / delete-all. Expose it as a live
+       getter so `app.state` never points at a detached object. */
+    Object.defineProperty(window.app, 'state', { get: () => state, configurable: true, enumerable: true });
+    function openTrx(id) { if (id) trxDetailId = id; trxTab = 'items'; navigate('#screen-trx-detail'); }
 
     /* ========== Boot ========== */
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

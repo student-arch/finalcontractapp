@@ -181,3 +181,101 @@ Partial badge + bar width, row-tap switching, reload persistence, custom-item ph
 42-screen sweep) plus the three earlier suites re-run — all green, 0 console errors.
 
 
+
+---
+
+## 9. Production hardening — 2026-10-29
+
+Full behavioural pass. The prototype was audited as an *application*, not a visual
+mock: every screen, form, calculation and workflow was exercised in headless
+Chromium and the defects below were fixed in place. **118 assertions across six
+suites, 0 console errors, 44/44 screens clean at 320/360/390/430/768/1024.**
+
+### 9.1 Blocking defects found and fixed
+
+| # | Defect | Effect before | Fix |
+|---|---|---|---|
+| 1 | `TODAY` hardcoded to `2026-10-21` | Every "today", aging figure, correction window and alert was wrong on any other calendar day | Derived from the device clock; seed data generated relative to it (yesterday's supply, month-scoped tenders) |
+| 2 | Dates built with `toISOString()` | At UTC+5:30 local midnight formats as the previous UTC day, shifting every date by one | Local-date `toISO()` formatter used everywhere |
+| 3 | `₹₹40/kg` on 18 surfaces | `formatINR()` already prefixes ₹; callers added another | All duplicate symbols removed (guarded by a test) |
+| 4 | Tapping any transaction in History bounced to History | `openTrx()` navigated first, so the renderer read a null id and redirected | Id is set before `navigate()`; renderer falls back to the newest transaction |
+| 5 | Payment recorded once **per bill** | Dues and "collected" double-counted after any FIFO payment | One receipt + `allocations[]`; `billPaid()` / `billPending()` are the only source of truth |
+| 6 | "Memo / Bill" silently created a bill for institution #1 | Sharing a document moved money and changed dues | Memos are documents on `trx.memos`; per-institution picker; outdated-memo warning reads the memo |
+| 7 | Deductions hit the institution tab only | Overall / daily / weekly / monthly P&L disagreed with each other | `allDeductions()` + `deductionsOn()` / `deductionsInRange()` feed every view |
+| 8 | P&L headline metrics hardcoded (`₹5,00,000`) | Screen contradicted its own tabs | Computed; "Deductions" is now a first-class row |
+| 9 | Empty cart showed totals card and "Continue → Allocate" | `svgHide('.cart-totals-card')` targeted a class absent from the markup — dead button on an empty cart | Class added; totals/CTA hide when empty |
+| 10 | Tender with no price array threw on "+ Add Item Price" | `inst.fixedPrices[tenderId]` was `undefined` → crash on a valid flow | Array created on demand; missing-tender case toasts instead of throwing |
+| 11 | Day-entry type picker stacked a second modal | Sale/Waste form opened underneath the picker | `dayEntryFlow()` closes the picker first |
+| 12 | `#btnTrxPhoto` had two click handlers | Locked transactions opened the photo modal *and* the adjustment modal | Static duplicate binding removed; renderer owns the button |
+| 13 | "Delete All Data" restored the demo dataset | Wipe left you with the seed transaction and institutions | `emptyState()` keeps catalogue + settings, drops every record |
+| 14 | `app.state` captured once at export | Restore / import / delete left the exposed handle pointing at a detached object | Live getter |
+| 15 | "Partially Used" inventory filter could never match | It filtered `status === 'Sold'`, which only happens at qty 0 | Matches lots with a negative movement and stock remaining |
+| 16 | "Export PDF/CSV" copy | No PDF export exists | Copy says CSV |
+
+### 9.2 Logic and state fixes
+
+- **Over-allocation** is clamped to the item's remaining supply, with a live toast; the input is rewritten to the clamped value.
+- **Editing a cart line** can no longer strand allocations: new supply must cover allocated + remaining, and the rate must be positive.
+- **Removing the last line** clears that item's allocations/remaining/rejections, and an emptied cart clears expenses and correction mode.
+- **Discard** now also clears `rejected`.
+- **`undoRemaining()` / `autoSplit()`** persist (they mutated without `saveState()`).
+- **Correction mode** preserves each allocation's `tenderId`, so the tender picker and contract P&L survive a re-open.
+- **`syncPayablesForTrx()`** had inverted arithmetic (`amount − settled` computed as `reduce(amount, −x)`) and zeroed `remaining` before writing the settlement that explained it. Both fixed.
+- **`finalizeCart()`** is defensive: it re-validates and refuses to commit a cart with unallocated stock or a missing rate, regardless of how it was reached.
+- **`quickAdd()`** routes duplicates through the same choice sheet as the detail screen (it previously appended silently).
+- **Shelf-life policy** writes `settings.shelfLifeDefault` instead of overwriting `overdueAlertDays`.
+- **Bills** clamp `net` at 0 and push the surplus deduction back to pending — never a negative bill.
+- **Quantities never sum across units**: `qtyByUnit()` renders "100 kg · 20 litre" instead of a fake total (cart, home, inventory, institution and P&L rows).
+
+### 9.3 Validation added
+
+| Surface | Rule |
+|---|---|
+| Business profile | Name required (was silently defaulting to "My Vegetable Business") |
+| Item create/edit | Trimmed, case-insensitive duplicate rejected, purchase-unit factor > 0 |
+| Institution create/edit | Trimmed, duplicate name rejected |
+| Tender create/edit | Name required; end date on or after start |
+| Cart line | Quantity > 0; rate > 0; supply ≥ allocated + remaining |
+| Allocation | Clamped to remaining supply |
+| Deduction | Cannot exceed open-bill pending (or accrued when unbilled) |
+| Day entries | No future dates (sale, waste, settlement, voucher, deduction) |
+| Sale / waste | Quantity ≤ lot; empty-lot state explains where stock comes from |
+| Expense | Amount > 0 (delete asks first) |
+
+### 9.4 UI/UX and responsive fixes
+
+- `.screen` had no top offset, so every heading sat under the fixed 56px app bar. One `--screen-top-offset` now clears it, including `env(safe-area-inset-top)`.
+- `.metric-grid` had **no grid** below 640px — the four Today metrics rendered as bare text. It is now a 2-up card grid on phones, 4-up from 640px.
+- `.btn-sticky` double-counted the safe area and reserved a fixed 136px. Reserve is now derived from the real bar height and row count, so 3- and 4-button bars (transaction detail) wrap to two rows without clipping or truncation.
+- Sticky bars no longer truncate labels ("Re-open & Correct", "Memo / Bill", "Attach Photo" are full width).
+- Allocation sub-rows lost their fixed `150px` indent and fixed-width inputs; `#itemGrid` quick-add wraps at 360px. **Zero horizontal overflow on all 44 screens at 320–1024px.**
+- Tap targets: app-bar buttons, modal close, inline row actions and inventory `⋯` are ≥44px. Checkbox/radio *labels* are 44px tall while the painted control stays 20px.
+- Modals: body scrolls, footer is sticky, `100dvh` cap, safe-area aware. `Escape` dismisses the topmost overlay.
+- Closed overlays are `visibility: hidden` — they were still in the tab order and the accessibility tree.
+- Focus ring extended to `.auth-link`, `.bottom-nav a`, `.alloc-veg-row`, `.list-row[onclick]`; `.item-card:active` had an invalid shadow token.
+- Disabled buttons no longer lift on hover; reduced-motion also neutralises overlay transitions.
+- Toast flood capped at 3 with duplicate-text coalescing.
+- Sign out asks for confirmation and states the ledger stays on the device.
+
+### 9.5 Verification suites
+
+| Suite | Assertions | Covers |
+|---|---|---|
+| `suite` | 12 | Boot, auth gate, onboarding gate, seed coherence, currency |
+| `flow2` | 13 | Add → allocate → expenses → review → confirm → commit, plus arithmetic invariants |
+| `deep` | 26 | Institution/tender/price CRUD, stock, sales, overpayment → credit, all 14 reports, all 8 P&L tabs, settings, reload persistence, sign-out |
+| `edge` | 23 | Correction window + R2 revision, post-lock adjustment, stale cross-day cart, discard, extreme values, negative/zero rejection, typed delete-all |
+| `crud` | 24 | Item/category/reason/expense CRUD, duplicate guards, inventory reservation, import rejection |
+| `data` + `a11y` | 17 | Backup/restore round-trip, CSV blob, Escape, focus rings, tap-target audit |
+
+### 9.6 Known, deliberate limitations
+
+- No backend, no sync, single user, English only, ₹ only, light theme only.
+- Auth is a demo PIN (`1234`) with no server — the gate is a UX simulation.
+- Backup/export are browser downloads; "share memo" uses Web Share/clipboard; photo evidence is a local data URI.
+- Alerts are computed on load (in-app only, no OS notifications).
+- The spec's 13 alert kinds are implemented as 6 computed kinds.
+- Reports export CSV/JSON only (copy corrected).
+
+`FLUTTER_HANDOFF.md` documents the routes, data model, formulas, component mapping,
+validation contract and suggested Flutter structure derived from this build.
